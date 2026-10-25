@@ -24,6 +24,7 @@
 // we are not pretending otherwise.
 
 import { SignTimeline, mirrorPhase, neutralPose, posePhase, restingPose } from './sign-clip.js';
+import { EVERYDAY_SIGNS, EVERYDAY_ALIASES } from '../everyday-signs.js';
 
 // Where the non-dominant hand waits when it is a surface for the other hand to
 // act on (FALL, HELP, GOOD, STOP): flat, palm up, in front of the chest.
@@ -111,10 +112,11 @@ export const SIGNS = Object.freeze({
 		],
 	},
 	YALL: {
-		gloss: 'Flat palm-up hand sweeps an arc across the group.',
+		source: 'https://www.lifeprint.com/asl101/pages-layout/indexing.htm',
+		gloss: 'Index finger sweeps across the people addressed.',
 		phases: [
-			{ t: 0.3, right: { shape: 'FLAT', at: { anchor: 'sternum', out: -0.08, up: -0.06, forward: 0.28 }, fingers: ['forward', 'in'], palm: 'up' }, head: { turn: 5 } },
-			{ t: 0.42, right: { shape: 'FLAT', at: { anchor: 'sternum', out: 0.26, up: -0.04, forward: 0.24 }, fingers: ['forward', 'out'], palm: 'up' }, head: { turn: -6 }, hold: 0.16 },
+			{ t: 0.3, right: { shape: '1', at: { anchor: 'sternum', out: -0.12, up: -0.04, forward: 0.3 }, fingers: ['forward', 'in'], palm: 'down' }, head: { turn: 5 } },
+			{ t: 0.42, right: { shape: '1', at: { anchor: 'sternum', out: 0.24, up: -0.04, forward: 0.3 }, fingers: ['forward', 'out'], palm: 'down' }, head: { turn: -6 }, hold: 0.16 },
 		],
 	},
 	YOU: {
@@ -281,6 +283,7 @@ export const SIGNS = Object.freeze({
 			{ t: 0.3, right: { shape: '3', at: { anchor: 'chin', out: 0.2, up: -0.06, forward: 0.22 }, fingers: 'up', palm: 'forward' }, hold: 0.26 },
 		],
 	},
+	...EVERYDAY_SIGNS,
 });
 
 // Everyday words that map onto a sign already in the table. Kept separate so the
@@ -292,25 +295,17 @@ const ALIASES = Object.freeze({
 	THANKYOU: 'THANK',
 	YEAH: 'YES',
 	YEP: 'YES',
-	OK: 'YES',
 	NOPE: 'NO',
 	GLAD: 'HAPPY',
 	FELL: 'FALL',
 	FALLS: 'FALL',
 	YOURE: 'YOU',
-	MY: 'ME',
-	MINE: 'ME',
 	I: 'ME',
 	IM: 'ME',
-	NEED: 'WANT',
 	WANTS: 'WANT',
-	LIKE: 'GOOD',
-	GREAT: 'GOOD',
 	NICELY: 'NICE',
 	KNOWS: 'KNOW',
 	THINKS: 'THINK',
-	LOOK: 'SEE',
-	WATCH: 'SEE',
 	MEETS: 'MEET',
 	WORKS: 'WORK',
 	WORKING: 'WORK',
@@ -323,14 +318,13 @@ const ALIASES = Object.freeze({
 	HELPING: 'HELP',
 	LEARNING: 'LEARN',
 	NAMED: 'NAME',
-	EVERYONE: 'YALL',
-	EVERYBODY: 'YALL',
 	YALL: 'YALL',
 	SORRYY: 'SORRY',
+	...EVERYDAY_ALIASES,
 });
 
 /** Every word this dictionary can sign, including aliases. */
-export const SIGNABLE_WORDS = Object.freeze([...Object.keys(SIGNS), ...Object.keys(ALIASES)].sort());
+export const SIGNABLE_WORDS = Object.freeze([...new Set([...Object.keys(SIGNS), ...Object.keys(ALIASES)])].sort());
 
 /**
  * Resolve a normalized word to its sign entry, or null when it must be spelled.

@@ -222,7 +222,7 @@ window.avatarDiagnostics=()=>({
   time:action?.time||0,
   duration:clip?.duration||0,
   joints:bones?['RightArm','RightForeArm','RightHand','RightHandIndex1'].map(n=>bones.get(n)?.quaternion.toArray()):[],
-  renderedJoints:bones?['RightArm','RightForeArm','RightHand','RightHandIndex1'].map(n=>transition.renderedRotation(bones.get(n))):[],
+  renderedJoints:bones?['RightArm','RightForeArm','RightHand','RightHandIndex1','RightHandThumb1','LeftArm','LeftForeArm','LeftHand','LeftHandIndex1','LeftHandThumb1'].map(n=>transition.renderedRotation(bones.get(n))):[],
   frames:renderer?.info.render.frame,
   aspect:camera.aspect,
   position:camera.position.toArray(),

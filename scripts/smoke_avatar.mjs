@@ -55,8 +55,9 @@ const server = createServer(async (req, res) => {
             if(Math.abs(rect.width-innerWidth)>2||Math.abs(rect.height-(visualViewport?.height||innerHeight))>2){report('error','Avatar canvas does not fit its viewport');return}
             report('ready',JSON.stringify({width:rect.width,height:rect.height}));
             requestAnimationFrame(watchTransitions);
-            window.enqueueCaptions([{id:'1',text:'Yes'},{id:'2',text:'No'}]);
-            window.enqueueCaptions([{id:'2',text:'No'},{id:'3',text:'Help'}]);
+            try{report('handshapes',JSON.stringify(window.verifyHandshapes()))}catch(error){report('error',String(error));return}
+            window.enqueueCaptions([{id:'1',text:'Water'},{id:'2',text:'Family'}]);
+            window.enqueueCaptions([{id:'2',text:'Family'},{id:'3',text:'Sleep'}]);
           },
           onSigningStarted(id){
             started.push(id);report('start',id);
@@ -73,7 +74,24 @@ const server = createServer(async (req, res) => {
           onSigningComplete(id){completed.push(id);report('complete',id)},
           onAvatarError(error){report('error',error)},
         };
-      </script><script>`));
+      </script><script>`).replace('init();', `
+        window.verifyHandshapes=()=>{
+          const shapes=['F','8','OPEN_8','FLAT_O','WRITE_PINCH','BENT_V','WAIT_A','WAIT_B'];
+          const results=[];
+          for(const side of ['Right','Left'])for(const shape of shapes){
+            const pose=handRig.pose(shape,side);
+            if(pose.size!==15||![...pose.values()].every(q=>q.toArray().every(Number.isFinite)&&Math.abs(q.length()-1)<.001))throw Error('Invalid handshape '+side+shape);
+            for(const [name,q]of pose)handRig.joints.get(name).b.quaternion.copy(q);
+            avatar.updateMatrixWorld(true);
+            const finger=shape==='8'?'Middle':'Index';
+            const gap=avatar.getObjectByName(side+'HandThumb4').getWorldPosition(new T.Vector3()).distanceTo(avatar.getObjectByName(side+'Hand'+finger+'4').getWorldPosition(new T.Vector3()));
+            results.push({side,shape,gap});
+          }
+          for(const [bone,,q]of restPose)bone.quaternion.copy(q);
+          avatar.updateMatrixWorld(true);
+          return results;
+        };
+        init();`));
     }
     res.setHeader('Content-Type', mime[extname(filename)] || 'application/octet-stream');
     res.end(body);
@@ -100,13 +118,16 @@ try {
   await writeFile(join(output, 'result.json'), JSON.stringify({events, errors}, null, 2));
   await writeFile(join(output, 'chrome.log'), stderr);
   assert.deepEqual(errors, []);
+  const shapes=JSON.parse(events.find(e=>e[0]==='handshapes')?.[1]||'[]');
+  assert.equal(shapes.length,16);
+  for(const shape of shapes.filter(s=>['F','8','FLAT_O','WRITE_PINCH'].includes(s.shape)))assert.ok(shape.gap<.035,`Thumb contact missed: ${JSON.stringify(shape)}`);
   const completed = JSON.parse(events.find(e => e[0] === 'done')?.[1] || '{}');
   assert.deepEqual(completed.started, ['1', '2', '3', '4']);
   assert.deepEqual(completed.completed, ['1', '2', '3', '4']);
   assert.equal(completed.active, false);
   assert.equal(completed.seams.length,1);
   assert.ok(completed.seams[0]<.08, 'Rendered pose jumped at the word handoff: '+completed.seams[0]);
-  console.log('Avatar WebGL runtime passed: model ready, ordered signs, smooth handoff, bridge callbacks, duplicate filtering, clear/cancel.');
+  console.log('Avatar WebGL runtime passed: expanded signs, both-hand thumb contacts, smooth handoff, bridge callbacks, duplicate filtering, clear/cancel.');
   console.log('Word-boundary joint change: '+(completed.seams[0]*180/Math.PI).toFixed(3)+' degrees.');
 } finally {
   clearTimeout(timer);

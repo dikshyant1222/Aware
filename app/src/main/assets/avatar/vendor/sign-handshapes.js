@@ -152,12 +152,19 @@ export const HANDSHAPES = Object.freeze({
 	FLAT: { curl: {}, thumb: 'side' },
 	/** Flat hand bent at the knuckles: HAPPY, YOUR, the release of THANK-YOU. */
 	BENT_B: { curl: {}, knuckle: 50, thumb: 'across' },
+	/** Paired fingers bent at the knuckles, used by SIT. */
+	BENT_V: { curl: { Index: [65, 15, 5], Middle: [65, 15, 5], Ring: 1, Pinky: 1 }, thumb: 'across' },
+	/** Index and thumb pinched as if holding a pen; other fingers loosely curled. */
+	WRITE_PINCH: { curl: { Index: 0.55, Middle: 0.7, Ring: 0.8, Pinky: 0.85 }, thumb: 'oppose' },
+	/** Alternating finger bends let WAIT flutter without moving the wrists. */
+	WAIT_A: { curl: { Index: 0.26, Ring: 0.26 }, splay: { Index: 10, Middle: 3, Ring: -4, Pinky: -12 }, thumb: 'out' },
+	WAIT_B: { curl: { Middle: 0.26, Pinky: 0.26 }, splay: { Index: 10, Middle: 3, Ring: -4, Pinky: -12 }, thumb: 'out' },
 	/** Spread and curved, like holding a ball. */
 	CLAW: { curl: { Index: 0.45, Middle: 0.45, Ring: 0.45, Pinky: 0.45 }, splay: { Index: 10, Middle: 3, Ring: -4, Pinky: -12 }, thumb: 'oppose' },
 	/** Fingers together pinched to the thumb: the closing shape of many signs. */
 	FLAT_O: { curl: { Index: 0.6, Middle: 0.6, Ring: 0.6, Pinky: 0.6 }, knuckle: 20, thumb: 'oppose' },
 	/** Open hand with the middle finger dropped to the palm: FEEL, SICK. */
-	OPEN_8: { curl: { Middle: 0.62 }, splay: { Index: 9, Ring: -6, Pinky: -12 }, thumb: 'out' },
+	OPEN_8: { curl: { Middle: [70, 0, 0] }, splay: { Index: 9, Ring: -6, Pinky: -12 }, thumb: 'out' },
 	/** Index and pinky out: the ILY / "rock on" family. */
 	ILY: { curl: { Middle: 1, Ring: 1 }, splay: { Index: 6, Pinky: -6 }, thumb: 'out' },
 });

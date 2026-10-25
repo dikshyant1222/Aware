@@ -1,14 +1,16 @@
 import {compileUtterance} from './vendor/sign-speech.js';
 import {SIGNS,lookupSign,signLookup} from './vendor/sign-dictionary.js';
-export const VOCABULARY=[['Hello','HELLO'],['Thank you','THANK'],['Please','PLEASE'],['Sorry','SORRY'],['Yes','YES'],['No','NO'],['Help','HELP'],['Good','GOOD'],['More','MORE'],['Stop','STOP'],['Love','LOVE'],['Name','NAME'],['You','YOU'],['Me','ME']];
-const supported=new Set(VOCABULARY.map(v=>v[1]));
+// The dictionary is the single source of truth for both preview and live captions.
+export const VOCABULARY=Object.freeze(Object.keys(SIGNS).map(word=>[
+ word==='THANK'?'Thank you':word.charAt(0)+word.slice(1).toLowerCase(),word,
+]));
 const display=w=>w==='THANKYOU'||w==='THANK'||w==='THANKS'?'THANK YOU':w;
 export function compileMessage(input,spellingOnly=false,options={}){
  const cleaned=String(input).toUpperCase().replace(/[’']/g,'').replace(/[^A-Z0-9\s-]/g,' ').replace(/-/g,' ').replace(/\s+/g,' ').trim();
  const text=spellingOnly?cleaned:cleaned.replace(/\bTHANK\s+YOU\b/g,'THANKYOU');
  const live=options.live===true,continuous=options.continuous===true,rate=live?1.15:.7,lookup=signLookup({rate});
  const timing=live?{holdSeconds:.20,transitionSeconds:.16,motionSeconds:.6,leadSeconds:.08,tailSeconds:.12}:{holdSeconds:.82,transitionSeconds:.3,motionSeconds:1.25,leadSeconds:.35,tailSeconds:.4};
- const result=compileUtterance(text,{signs:spellingOnly?null:(word,pos)=>{const found=lookupSign(word);return found&&supported.has(found.name)?lookup(word,pos):null},maxSeconds:Infinity,timing,continuous});
+ const result=compileUtterance(text,{signs:spellingOnly?null:lookup,maxSeconds:Infinity,timing,continuous});
  const marks=[],cues=[];let previousRight='RELAXED',previousLeft='RELAXED';
  function cue(start,transitionEnd,end,right,left){cues.push({start,transitionEnd,end,right,left,previousRight,previousLeft});previousRight=right;previousLeft=left}
  for(let i=0;i<result.segments.length;i++){
