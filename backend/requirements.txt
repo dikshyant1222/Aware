@@ -1,0 +1,15 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.8,<3
+python-multipart>=0.0.9,<1
+numpy>=1.26,<2.1
+scipy>=1.13,<2
+av>=15,<17
+httpx>=0.27,<1
+ai-edge-litert>=1.2,<2; platform_system != "Windows"
+tensorflow>=2.16,<2.18; platform_system == "Windows"
+
+# Test dependencies (kept here so one install is enough for local development)
+pytest>=8.2,<9
+pytest-asyncio>=0.24,<1
+
