@@ -1,7 +1,30 @@
-# Tool caches
-Microsoft/
+# Gradle / Android build output
+.gradle/
+.kotlin/
+**/build/
+.externalNativeBuild/
+.cxx/
+captures/
+*.apk
+*.aab
+*.ap_
 
-# OS
+# Machine-specific configuration / IDE files
+local.properties
+.idea/
+.vscode/
+*.iml
 .DS_Store
 Thumbs.db
 
+# Signing material
+*.jks
+*.keystore
+keystore.properties
+
+# Models are downloaded locally, never committed
+app/src/main/assets/*.tflite
+app/src/main/assets/*.task
+*.tflite
+*.task
+*.download
