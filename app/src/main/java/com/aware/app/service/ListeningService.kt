@@ -106,7 +106,7 @@ class ListeningService : LifecycleService() {
                         launch(start = CoroutineStart.UNDISPATCHED) {
                             activePipeline.alerts.collect(activeReactor::react)
                         }
-                        val situationController = SituationController(this@ListeningService, activePipeline, this, initialSettings.smartSummaries)
+                        val situationController = SituationController(this@ListeningService, activePipeline, this, activeReactor::escalate)
                         situation = situationController
                         activePipeline.start(this)
                         val controller = SpeechController(this@ListeningService, activePipeline, audio, this) { time ->
@@ -119,9 +119,7 @@ class ListeningService : LifecycleService() {
                             settingsRepository.settings.collect { settings ->
                                 activePipeline.setSensitivity(settings.sensitivity)
                                 activePipeline.setEnabledCategories(settings.enabledCategories)
-                                controller.applySettings(settings)
-                                situationController.setEnabled(settings.smartSummaries)
-                            }
+                                controller.applySettings(settings)                            }
                         }
                         launch {
                             activePipeline.state.map { it.latestAlert }.filterNotNull()

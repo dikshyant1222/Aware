@@ -18,4 +18,7 @@ enum class SoundType(val category: Category, val displayName: String, val alerts
     BABY_CRY(Category.PEOPLE, "Baby crying"),
     SPEECH(Category.PEOPLE, "Speech", alerts = false),
     DOG_BARK(Category.ANIMALS, "Dog barking"),
+    CAT(Category.ANIMALS, "Cat meowing"),
+    FARM_ANIMAL(Category.ANIMALS, "Farm animal"),
+    BIRD(Category.ANIMALS, "Bird"),
 }

@@ -2,9 +2,18 @@ package com.aware.app.ui
 
 import android.webkit.WebView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Hearing
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
+import com.aware.app.speech.TranscriptLine
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -23,6 +32,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
+import com.aware.app.ui.theme.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aware.app.R
 import com.aware.app.service.ListeningRepository
@@ -38,6 +52,7 @@ fun AslCaptionsScreen(onBack: () -> Unit) {
     val view = LocalView.current
     val lines by ListeningRepository.transcript.collectAsStateWithLifecycle()
     val active by ListeningRepository.captions.collectAsStateWithLifecycle()
+    val speechError by ListeningRepository.speechError.collectAsStateWithLifecycle()
     val scroll = rememberLazyListState()
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var avatarReady by remember { mutableStateOf(false) }
@@ -96,9 +111,13 @@ fun AslCaptionsScreen(onBack: () -> Unit) {
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
-        Column(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxWidth().weight(0.55f)) {
+    AwareBackdrop {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AwareHeader(stringResource(R.string.ui_live_talk), onBack)
+            LivePanelLayout(Modifier.fillMaxWidth().weight(1f)) {
+            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)).background(Color(0xFFF3F8F2))
+                .border(1.dp, Color.White, RoundedCornerShape(24.dp))) {
                 key(avatarVersion) {
                     AvatarWebView(
                         onWebViewCreated = { webViewRef = it },
@@ -122,7 +141,7 @@ fun AslCaptionsScreen(onBack: () -> Unit) {
                         Modifier.align(Alignment.Center).padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(stringResource(R.string.avatar_failed), color = Color.LightGray, textAlign = TextAlign.Center)
+                        Text(stringResource(R.string.avatar_failed), color = AwareSecondary, textAlign = TextAlign.Center)
                         TextButton(onClick = {
                             avatarReady = false
                             avatarFailed = false
@@ -135,43 +154,93 @@ fun AslCaptionsScreen(onBack: () -> Unit) {
                     CircularProgressIndicator(Modifier.align(Alignment.Center), color = AwareAccent, strokeWidth = 2.dp)
                 }
             }
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(0.45f),
-                state = scroll,
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
-            ) {
-                if (lines.isEmpty()) item {
-                    Text(stringResource(R.string.captions_waiting), color = Color.LightGray, fontSize = 26.sp)
-                }
-                items(lines, key = { it.id }) { line ->
-                    val highlight = signing?.takeIf { it.lineId == line.id }
-                    val caption = AnnotatedString.Builder(line.text).apply {
-                        if (highlight != null && highlight.start in 0 until highlight.end && highlight.end <= line.text.length) {
-                            addStyle(SpanStyle(color = AwareAccent, background = Color(0xFF26301C)), highlight.start, highlight.end)
-                        }
-                    }.toAnnotatedString()
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            caption,
-                            modifier = Modifier.semantics {
-                                if (highlight != null) stateDescription = "signing:${highlight.start}:${highlight.end}"
-                            },
-                            color = if (line.isFinal) Color.White else Color.LightGray,
-                            fontSize = 28.sp,
-                            lineHeight = 36.sp,
-                        )
-                        line.translation?.takeIf {
-                            it.isNotBlank() && !it.trim().equals(line.text.trim(), ignoreCase = true)
-                        }?.let {
-                            Text(it, color = Color.LightGray, fontSize = 24.sp, lineHeight = 32.sp)
+            TranscriptPanel(lines, signing, scroll, active, speechError != null, ListeningRepository::clearTranscript)
+            }
+        }
+    }
+}
+
+/** Same two child instances in either arrangement, including the measured WebView. */
+@Composable
+private fun LivePanelLayout(modifier: Modifier, content: @Composable () -> Unit) {
+    val largeText = LocalDensity.current.fontScale > 1.3f
+    val gap = with(LocalDensity.current) { 12.dp.roundToPx() }
+    val wideMinimum = with(LocalDensity.current) { 600.dp.roundToPx() }
+    Layout(content, modifier) { children, constraints ->
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val wide = width >= wideMinimum && width > height
+        val spacing = minOf(gap, if (wide) width else height)
+        val first = if (wide) ((width - spacing) * .55f).toInt() else ((height - spacing) * if (largeText) .45f else .55f).toInt()
+        val avatar = children[0].measure(androidx.compose.ui.unit.Constraints.fixed(if (wide) first else width, if (wide) height else first))
+        val captions = children[1].measure(androidx.compose.ui.unit.Constraints.fixed(if (wide) width - spacing - first else width, if (wide) height else height - spacing - first))
+        layout(width, height) {
+            avatar.placeRelative(0, 0)
+            captions.placeRelative(if (wide) first + spacing else 0, if (wide) 0 else first + spacing)
+        }
+    }
+}
+
+/**
+ * The live line is the strongest thing in the box and earlier lines recede, so the eye stays on the
+ * newest words. The signing highlight and its semantics are unchanged.
+ */
+@Composable
+private fun TranscriptPanel(lines: List<TranscriptLine>, signing: SigningHighlight?, scroll: LazyListState, active: Boolean, hasError: Boolean, onClear: () -> Unit) {
+    val shape = RoundedCornerShape(24.dp)
+    Column(Modifier.fillMaxSize().shadow(6.dp, shape, ambientColor = Color(0xFF8FC5A2), spotColor = Color(0xFF8FC5A2))
+        .clip(shape).background(Color.White).border(1.dp, Color.White, shape)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 24.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(if (active) AwareGreen else AwareSecondary))
+            Text(stringResource(if (active) R.string.ui_listening else R.string.ui_paused), Modifier.weight(1f), color = AwareSecondary,
+                style = MaterialTheme.typography.labelLarge)
+            if (lines.isNotEmpty()) TextButton(onClear, Modifier.heightIn(min = 48.dp)) {
+                Icon(Icons.Default.Close, null, Modifier.size(18.dp))
+                Text(stringResource(R.string.captions_clear), Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelLarge)
+            }
+        }
+        HorizontalDivider(color = AwareGroup)
+        if (lines.isEmpty()) {
+            Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.Hearing, null, Modifier.size(40.dp), tint = if (hasError) MaterialTheme.colorScheme.error else AwareAccent)
+                Text(stringResource(if (hasError) R.string.ui_speech_error else R.string.captions_waiting),
+                    Modifier.padding(top = 12.dp), color = if (hasError) MaterialTheme.colorScheme.error else AwareSecondary,
+                    fontSize = 22.sp, lineHeight = 30.sp, textAlign = TextAlign.Center)
+            }
+            return@Column
+        }
+        LazyColumn(Modifier.fillMaxSize(), state = scroll, verticalArrangement = Arrangement.spacedBy(18.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)) {
+            itemsIndexed(lines, key = { _, line -> line.id }) { index, line ->
+                val latest = index == lines.lastIndex
+                val highlight = signing?.takeIf { it.lineId == line.id }
+                val caption = AnnotatedString.Builder(line.text).apply {
+                    if (highlight != null && highlight.start in 0 until highlight.end && highlight.end <= line.text.length) {
+                        addStyle(SpanStyle(color = AwareAccent, background = Color(0xFFDDF8D7)), highlight.start, highlight.end)
+                    }
+                }.toAnnotatedString()
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        caption,
+                        modifier = Modifier.semantics {
+                            if (highlight != null) stateDescription = "signing:${highlight.start}:${highlight.end}"
+                        },
+                        color = if (latest) AwareInk else AwareInk.copy(alpha = .65f),
+                        fontSize = 28.sp,
+                        lineHeight = 38.sp,
+                        fontWeight = if (latest) FontWeight.Medium else FontWeight.Normal,
+                    )
+                    line.translation?.takeIf {
+                        it.isNotBlank() && !it.trim().equals(line.text.trim(), ignoreCase = true)
+                    }?.let {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(Modifier.width(3.dp).height(32.dp).clip(RoundedCornerShape(2.dp)).background(AwareAccent.copy(alpha = .5f)))
+                            Text(it, color = AwareSecondary, fontSize = 24.sp, lineHeight = 32.sp)
                         }
                     }
                 }
             }
-        }
-        IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart).padding(4.dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.haptics_back), tint = Color.White)
         }
     }
 }

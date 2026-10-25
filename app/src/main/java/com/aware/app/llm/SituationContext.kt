@@ -5,7 +5,7 @@ import com.aware.app.alert.SoundType
 import com.aware.app.alert.Trend
 
 /** A bounded snapshot, newest first. Ages are measured when the snapshot is taken. */
-class SituationContext(events: List<Event> = emptyList(), speech: List<SpeechLine> = emptyList()) {
+class SituationContext(events: List<Event> = emptyList(), speech: List<SpeechLine> = emptyList(), maxAgeSeconds: Double = 30.0) {
     data class Event(
         val type: SoundType,
         val category: Category = type.category,
@@ -16,9 +16,9 @@ class SituationContext(events: List<Event> = emptyList(), speech: List<SpeechLin
 
     data class SpeechLine(val text: String, val secondsAgo: Double, val translation: String? = null)
 
-    val events = events.filter { it.secondsAgo in 0.0..30.0 && it.type != SoundType.SPEECH }
+    val events = events.filter { it.secondsAgo in 0.0..maxAgeSeconds && it.type != SoundType.SPEECH }
         .sortedBy { it.secondsAgo }.take(8)
-    val speech = speech.filter { it.secondsAgo in 0.0..30.0 && it.text.isNotBlank() }
+    val speech = speech.filter { it.secondsAgo in 0.0..maxAgeSeconds && it.text.isNotBlank() }
         .sortedBy { it.secondsAgo }.take(6)
 
     fun toJson(): String = "{\"events\":[" + events.joinToString(",") {

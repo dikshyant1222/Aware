@@ -17,7 +17,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aware.app.R
 import com.aware.app.llm.LlmStatus
-import com.aware.app.llm.MediaPipeLlmSummarizer
+import com.aware.app.llm.LiteRtLlmSummarizer
 import com.aware.app.service.ListeningRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun SmartSummarySetting(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
+fun SmartSummarySetting() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -41,9 +41,9 @@ fun SmartSummarySetting(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(refresh, running, enabled) {
+    LaunchedEffect(refresh, running) {
         val snapshot = withContext(Dispatchers.IO) {
-            MediaPipeLlmSummarizer.installedStatus(context) to (MediaPipeLlmSummarizer.modelFile(context) != null)
+            LiteRtLlmSummarizer.installedStatus(context) to (LiteRtLlmSummarizer.modelFile(context) != null)
         }
         installed = snapshot.first
         hasModel = snapshot.second
@@ -53,7 +53,7 @@ fun SmartSummarySetting(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
             progress = 0
             error = null
             try {
-                MediaPipeLlmSummarizer.importModel(context, uri) { percent -> withContext(Dispatchers.Main) { progress = percent } }
+                LiteRtLlmSummarizer.importModel(context, uri) { percent -> withContext(Dispatchers.Main) { progress = percent } }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { error = failure.message ?: context.getString(R.string.llm_import_failed) }
             finally {
@@ -63,13 +63,7 @@ fun SmartSummarySetting(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
             }
         }
     }
-    val label = stringResource(R.string.llm_setting)
-    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-        Switch(enabled, onEnabledChange, modifier = Modifier.semantics { contentDescription = label })
-    }
-    val status = if (!enabled) LlmStatus.DISABLED
-        else if (running && serviceStatus != LlmStatus.NOT_INSTALLED) serviceStatus else installed
+    val status = if (running && serviceStatus != LlmStatus.NOT_INSTALLED) serviceStatus else installed
     Text(when (status) {
         LlmStatus.NOT_INSTALLED -> stringResource(R.string.llm_not_installed)
         LlmStatus.UNSUPPORTED -> stringResource(R.string.llm_unsupported)
@@ -92,7 +86,7 @@ fun SmartSummarySetting(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
         scope.launch {
             progress = 0
             error = null
-            try { MediaPipeLlmSummarizer.removeModel(context) }
+            try { LiteRtLlmSummarizer.removeModel(context) }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { error = failure.message ?: context.getString(R.string.llm_remove_failed) }
             finally { progress = null; refresh++; ListeningRepository.modelChanged() }

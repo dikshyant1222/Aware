@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -101,8 +103,32 @@ fun trendText(trend: Trend): String = stringResource(when (trend) {
 })
 
 @Composable
-fun timeAgo(timeMs: Long, nowMs: Long): String =
-    stringResource(R.string.home_seconds_ago, ((nowMs - timeMs) / 1_000).coerceAtLeast(0))
+fun timeAgo(timeMs: Long, nowMs: Long): String {
+    val seconds = ((nowMs - timeMs) / 1000).coerceAtLeast(0)
+    return when {
+        seconds < 10 -> stringResource(R.string.ui_just_now)
+        seconds < 60 -> stringResource(R.string.home_seconds_ago, seconds)
+        seconds < 3600 -> stringResource(R.string.ui_minutes_ago, seconds / 60)
+        seconds < 86400 -> stringResource(R.string.ui_hours_ago, seconds / 3600)
+        else -> pluralStringResource(R.plurals.ui_days_ago, (seconds / 86400).toInt(), seconds / 86400)
+    }
+}
+
+fun soundIcon(type: SoundType): ImageVector = when (type) {
+    SoundType.SIREN, SoundType.SMOKE_ALARM -> Icons.Default.Warning
+    SoundType.GLASS_BREAK -> Icons.Default.BrokenImage
+    SoundType.SCREAM, SoundType.SPEECH -> Icons.Default.RecordVoiceOver
+    SoundType.CAR_HORN, SoundType.VEHICLE -> Icons.Default.DirectionsCar
+    SoundType.BICYCLE_BELL -> Icons.Default.PedalBike
+    SoundType.DOORBELL -> Icons.Default.Doorbell
+    SoundType.KNOCK -> Icons.Default.MeetingRoom
+    SoundType.PHONE_RING -> Icons.Default.PhoneInTalk
+    SoundType.APPLIANCE_BEEP -> Icons.Default.Kitchen
+    SoundType.WATER_RUNNING -> Icons.Default.WaterDrop
+    SoundType.BABY_CRY -> Icons.Default.ChildCare
+    SoundType.DOG_BARK, SoundType.CAT, SoundType.FARM_ANIMAL -> Icons.Default.Pets
+    SoundType.BIRD -> Icons.Default.Park
+}
 
 @Composable
 fun soundName(type: SoundType): String = stringResource(when (type) {
@@ -121,4 +147,7 @@ fun soundName(type: SoundType): String = stringResource(when (type) {
     SoundType.BABY_CRY -> R.string.sound_baby_cry
     SoundType.SPEECH -> R.string.sound_speech
     SoundType.DOG_BARK -> R.string.sound_dog_bark
+    SoundType.CAT -> R.string.sound_cat
+    SoundType.FARM_ANIMAL -> R.string.sound_farm_animal
+    SoundType.BIRD -> R.string.sound_bird
 })

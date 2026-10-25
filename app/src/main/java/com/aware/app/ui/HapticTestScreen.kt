@@ -75,7 +75,7 @@ fun HapticTestScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 private fun patternDescription(event: HapticEvent): Int = when (event) {
-    HapticEvent.SIREN, HapticEvent.SMOKE_ALARM, HapticEvent.SCREAM -> R.string.pattern_rising
+    HapticEvent.SIREN, HapticEvent.SMOKE_ALARM, HapticEvent.SCREAM, HapticEvent.URGENT -> R.string.pattern_rising
     HapticEvent.GLASS_BREAK -> R.string.pattern_glass
     HapticEvent.CAR_HORN -> R.string.pattern_horn
     HapticEvent.VEHICLE -> R.string.pattern_vehicle
@@ -86,6 +86,9 @@ private fun patternDescription(event: HapticEvent): Int = when (event) {
     HapticEvent.APPLIANCE_BEEP -> R.string.pattern_beep
     HapticEvent.WATER_RUNNING -> R.string.pattern_water
     HapticEvent.DOG_BARK -> R.string.pattern_dog
+    HapticEvent.CAT -> R.string.pattern_cat
+    HapticEvent.FARM_ANIMAL -> R.string.pattern_farm_animal
+    HapticEvent.BIRD -> R.string.pattern_bird
     HapticEvent.NAME_CALLED -> R.string.pattern_name
     HapticEvent.SPEECH -> R.string.pattern_silent
 }

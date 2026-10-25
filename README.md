@@ -1,7 +1,7 @@
 # Aware
 
 Native Android sound awareness for Deaf and hard-of-hearing users: background
-sound alerts, haptics, captions, and optional on-device situation summaries.
+sound alerts, haptics, captions, and on-device AI triage and situation summaries.
 See [PLAN.md](PLAN.md) for the architecture and later steps.
 
 ## Prerequisites
@@ -11,7 +11,7 @@ See [PLAN.md](PLAN.md) for the architecture and later steps.
 - Android SDK Platform 35, Build Tools 35.0.0, and Platform Tools, installed through
   Android Studio's SDK Manager.
 - A physical Android device running Android 8.0 / API 26 or later is recommended,
-  with USB debugging enabled. The optional LLM will need a capable physical device.
+  with USB debugging enabled. The on-device LLM needs a physical device with 7 GB RAM or more.
 - PowerShell on Windows, or Bash and `curl` on macOS/Linux, plus internet access
   for dependency and model downloads.
 
@@ -36,7 +36,7 @@ All dependency versions are in [gradle/libs.versions.toml](gradle/libs.versions.
 
    Both scripts create `app/src/main/assets/`, download `yamnet.tflite`, and skip
    an existing file. Paths are relative to the script, so other working directories
-   also work. Model files are ignored by Git. The optional LLM is installed separately below.
+   also work. Model files are ignored by Git. The on-device LLM model is installed separately below.
 
 2. Open this directory in Android Studio. Install the SDK packages above and
    select JDK 17 as the Gradle JDK.
@@ -71,11 +71,35 @@ also exited. For an emulator, configure
 [Windows Hypervisor Platform](https://developer.android.com/studio/run/emulator-acceleration#vm-windows),
 restart Windows, and start the virtual device in Android Studio's Device Manager.
 
+## App interface
+
+The native Compose UI uses a pale sky/mint backdrop, rounded white cards, and a
+shared floating Home / CC / History / Settings dock. The microphone control keeps
+the existing listening toggle; its halo indicates state rather than loudness.
+Home previews two distinct recent sounds and expands to five. Summary previews
+open a full reading sheet, and alert details retain their replay actions.
+
+First launch collects name and date of birth, followed by a three-sound demo check.
+The profile is local and fixed until app data is cleared. Name detection is always on;
+check responses do not change detection behavior or classify hearing ability.
+Settings shows the read-only profile, categories, sensitivity, language/speech, and permissions.
+Smart-summary model controls are hidden in this demo UI; existing model/backend support remains. Vibration testing and four-label sound diagnostics are
+available only in the collapsed developer section of debug builds. Emergency
+messages retain their explicit large, high-contrast styles.
+
+UI projection tests run with `:app:testDebugUnitTest`. `AwareUiTest` uses fixture
+data only in instrumentation to check expansion, sheets, navigation, and
+320–412 dp layouts with font scales through 2.0. It writes screenshots to the
+connected Android test additional output directory. Run connected UI tests on an
+unlocked device; APK retention is enabled so tests preserve the development app.
+
 ## Avatar and live captions
 
-The single green sign-language bubble opens the avatar above live caption text.
-Home and Settings both open this same screen. Captions start automatically;
-the viewing surface has no headings, badges, language metadata, or control row.
+The single CC control in the dock opens Live Talk, with a rounded signer panel
+above large live caption text. A compact header provides Back; the dock is hidden
+on this screen. Wide landscape windows arrange signer and text side by side.
+Home and Settings both open this same route. Captions start automatically;
+the signing area has no badges, language metadata, or overlaid control row.
 Stable words stream into the signer while recognition is still partial. A short
 pause flushes the remaining word even if the recognizer has not finalized the
 sentence; a final result sends only the unsent tail. The injected audio source
@@ -96,48 +120,48 @@ This is experimental English sign animation and fingerspelling,
 not validated ASL translation; translated captions are displayed as text. Long
 utterances and fingerspelling can accumulate a playback backlog.
 
-## Optional on-device LLM
+## On-device LLM (Gemma 4 E2B)
 
-Everything works without an LLM model. **What's happening?** immediately shows a
-deterministic quick summary of the last 30 seconds. Related sound alerts and final
-speech can also trigger a summary, at most once every 20 seconds. With **Smart
-summaries (on-device AI)** enabled and a compatible model installed, an on-device
-sentence can replace the template. Alerts and haptics never wait for the LLM.
+The LLM makes the app smarter but never gates an alert: detection, haptics and the
+first notification always fire immediately from the audio classifier.
 
-1. Download a **Gemma 3 1B int4 `.task`** model, for example from the
-   [litert-community/Gemma3-1B-IT repository](https://huggingface.co/litert-community/Gemma3-1B-IT).
-   Accept the model's license/access terms if required. Choose a `.task` variant
-   intended for Android MediaPipe LLM Inference; model formats such as `.litertlm`
-   are not interchangeable. Consult the
-   [MediaPipe Android guide](https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android)
-   for compatible variants. Rename the downloaded file to `model.task`.
-2. In **Settings → Import model file (.task)**, choose the download. The file must
-   have a `.task` extension and be larger than 50 MB. Import shows progress when
-   the document provider reports its size (otherwise 0% until completion), writes
-   a temporary file, and atomically installs it as `filesDir/llm/model.task`.
-   **Remove model** deletes the preferred installed file. An adb-owned file may
-   require removing it through adb instead.
-3. Alternatively, with the device connected, run from the model's directory:
+- **Summaries:** every 40 seconds, and shortly after each new alert, the service
+  summarizes the last 40 seconds of sounds and speech in one sentence. The Home card
+  shows it; History keeps 10 minutes locally. A model summary replaces its
+  template entry rather than duplicating it.
+- **Triage:** the model also rates the situation LOW, NORMAL, HIGH or CRITICAL.
+  `SituationRules` computes an instant floor from sound combinations (for example
+  smoke alarm + scream, or an emergency sound + someone calling for help). The
+  model can raise that floor by one level, and lower it only when no emergency
+  sound is present. A situation worse than the alerts already delivered triggers
+  an "Urgent" notification with a strong vibration, at most once per 30 seconds;
+  the model's wording then replaces the template text silently.
+- **Noise filtering:** when the model rates the situation LOW with no speech,
+  repeat alerts for running water, appliance beeps, vehicles and dog barks are
+  muted for 60 seconds. No other sound type can be muted, and any other alert
+  lifts every mute.
+- **Without a model** the app uses template summaries and the rules floor.
 
-   ```text
-   adb shell mkdir -p /data/local/tmp/llm
-   adb push model.task /data/local/tmp/llm/model.task
-   adb shell chmod 644 /data/local/tmp/llm/model.task
-   ```
+### Installing the model
 
-   The imported private file takes priority; the adb path is used only when
-   readable by the app. Android permissions/SELinux can prevent reading that path;
-   use Settings import in that case. Remove an adb-installed model with
-   `adb shell rm /data/local/tmp/llm/model.task`.
+Download `gemma-4-E2B-it.litertlm` (about 2.6 GB, LiteRT-LM format; `.task` files
+do not work). Then either:
 
-The LLM requires at least 4 GB total RAM and a device that Android does not mark
-as low-RAM. Settings shows installation/loading/readiness/failure status. Loading
-is lazy, each call has an eight-second result deadline, and an idle model unloads
-after two minutes. Blocking native work may finish after that deadline; its result
-is discarded and cleanup waits for native work to finish safely. Disabling smart
-summaries keeps quick summaries available. Model compatibility, speed, and memory
-use still need verification on the target phone; extension and size validation
-cannot prove that a particular download is compatible. No LLM model is bundled.
+1. **In the app:** Settings -> On-device AI -> *Import model file (.litertlm)*. The
+   file must end in `.litertlm` and be larger than 50 MB. It is copied to a temporary
+   file and atomically installed as `filesDir/llm/model.litertlm`. *Remove model*
+   deletes it.
+2. **With adb (debug builds):** `node scripts/install_llm.mjs <model path> [device serial]`
+   verifies the official file's size and SHA-256, then copies it into the app's
+   private storage. The app also reads `/data/local/tmp/llm/model.litertlm` as a
+   fallback; Android permissions can block that path.
+
+The device needs at least 7 GB total RAM, a 64-bit ABI, and must not be marked
+low-RAM; otherwise Settings shows "not supported". The engine tries the GPU backend,
+then CPU. The first load can take up to two minutes; later calls have a 15-second
+result deadline, and an idle model unloads after two minutes. Blocking native work
+may finish after a deadline; its result is discarded. Speed, memory use and triage
+quality still need verification on the target phone. No model is bundled.
 
 ## Verification status
 

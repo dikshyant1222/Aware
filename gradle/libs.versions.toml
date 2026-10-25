@@ -8,7 +8,7 @@ navigation = "2.9.0"
 datastore = "1.1.7"
 coroutines = "1.10.2"
 mediapipe-audio = "0.10.26.1"
-mediapipe-genai = "0.10.27"
+litertlm = "0.13.1"
 mlkit-translate = "17.0.3"
 junit = "4.13.2"
 webkit = "1.13.0"
@@ -33,7 +33,7 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 mediapipe-tasks-audio = { module = "com.google.mediapipe:tasks-audio", version.ref = "mediapipe-audio" }
-mediapipe-tasks-genai = { module = "com.google.mediapipe:tasks-genai", version.ref = "mediapipe-genai" }
+litertlm-android = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litertlm" }
 mlkit-translate = { module = "com.google.mlkit:translate", version.ref = "mlkit-translate" }
 
 [plugins]

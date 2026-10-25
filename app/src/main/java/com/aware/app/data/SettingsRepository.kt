@@ -1,6 +1,7 @@
 package com.aware.app.data
 
 import android.content.Context
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.aware.app.alert.Category
@@ -15,15 +16,16 @@ data class Settings(
     val sensitivity: Float = 0.5f,
     val translationTarget: String? = null,
     val nameDetection: Boolean = true,
-    val smartSummaries: Boolean = true,
+    val dateOfBirth: String = "",
+    val onboardingComplete: Boolean = false,
+    val soundCheckResponses: String = "",
 )
 
 private val Context.settingsStore by preferencesDataStore("settings")
 val Context.settingsRepository: SettingsRepository
     get() = SettingsRepository.get(applicationContext)
 
-class SettingsRepository private constructor(context: Context) {
-    private val store = context.settingsStore
+class SettingsRepository internal constructor(private val store: DataStore<Preferences>) {
     val settings: Flow<Settings> = store.data.catch {
         if (it is IOException) emit(emptyPreferences()) else throw it
     }.map { values ->
@@ -34,8 +36,10 @@ class SettingsRepository private constructor(context: Context) {
             userName = values[NAME] ?: "",
             sensitivity = (values[SENSITIVITY] ?: 0.5f).let { if (it.isFinite()) it.coerceIn(0f, 1f) else 0.5f },
             translationTarget = values[TARGET],
-            nameDetection = values[DETECT] ?: true,
-            smartSummaries = values[SMART_SUMMARIES] ?: true,
+            nameDetection = true,
+            dateOfBirth = values[DOB] ?: "",
+            onboardingComplete = values[ONBOARDED] ?: false,
+            soundCheckResponses = values[SOUND_CHECK] ?: "",
         )
     }
 
@@ -46,7 +50,19 @@ class SettingsRepository private constructor(context: Context) {
         val names = values[CATEGORIES] ?: Category.entries.map { it.name }.toSet()
         values[CATEGORIES] = if (enabled) names + category.name else names - category.name
     }.let { Unit }
-    suspend fun setUserName(name: String) = store.edit { it[NAME] = name }.let { Unit }
+    suspend fun completeOnboarding(name: String, dateOfBirth: String, responses: String) {
+        require(validProfile(name, dateOfBirth))
+        require(responses.length == 3 && responses.all { it == 'Y' || it == 'N' })
+        store.edit {
+            if (it[ONBOARDED] != true) {
+                it[NAME] = name.trim()
+                it[DOB] = dateOfBirth
+                it[SOUND_CHECK] = responses
+                it[DETECT] = true
+                it[ONBOARDED] = true
+            }
+        }
+    }
     suspend fun setSensitivity(value: Float) {
         require(value.isFinite())
         store.edit { it[SENSITIVITY] = value.coerceIn(0f, 1f) }
@@ -54,19 +70,19 @@ class SettingsRepository private constructor(context: Context) {
     suspend fun setTranslationTarget(code: String?) = store.edit {
         if (code == null) it.remove(TARGET) else it[TARGET] = code
     }.let { Unit }
-    suspend fun setNameDetection(enabled: Boolean) = store.edit { it[DETECT] = enabled }.let { Unit }
-    suspend fun setSmartSummaries(enabled: Boolean) = store.edit { it[SMART_SUMMARIES] = enabled }.let { Unit }
 
     companion object {
         private val CATEGORIES = stringSetPreferencesKey("categories")
         private val NAME = stringPreferencesKey("name")
+        private val DOB = stringPreferencesKey("date_of_birth")
+        private val ONBOARDED = booleanPreferencesKey("onboarding_complete")
+        private val SOUND_CHECK = stringPreferencesKey("sound_check_responses")
         private val SENSITIVITY = floatPreferencesKey("sensitivity")
         private val TARGET = stringPreferencesKey("translation_target")
         private val DETECT = booleanPreferencesKey("name_detection")
-        private val SMART_SUMMARIES = booleanPreferencesKey("smart_summaries")
         @Volatile private var instance: SettingsRepository? = null
         internal fun get(context: Context): SettingsRepository = instance ?: synchronized(this) {
-            instance ?: SettingsRepository(context).also { instance = it }
+            instance ?: SettingsRepository(context.settingsStore).also { instance = it }
         }
     }
 }

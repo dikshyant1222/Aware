@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Aware</string>
-    <string name="home_listening">Listening</string>
-    <string name="home_stopped">Not listening</string>
     <string name="home_start_listening">Start listening</string>
     <string name="home_stop_listening">Stop listening</string>
     <string name="listening_background_hint">Keeps listening when the screen is off</string>
@@ -12,20 +10,7 @@
     <string name="listening_stop">Stop</string>
     <string name="listening_start_error">Could not start audio recognition.</string>
     <string name="alerts_channel">Sound alerts</string>
-    <string name="home_level_title">Microphone level</string>
-    <string name="home_level_description">Microphone level: %1$d dBFS</string>
-    <string name="home_level_floor">−90 dBFS</string>
-    <string name="home_level_peak">0 dBFS</string>
-    <string name="home_sounds_title">Recognized sounds</string>
-    <string name="home_waiting_for_sounds">Waiting for recognizable sounds…</string>
-    <string name="home_start_hint">Start listening to see nearby sounds.</string>
-    <string name="home_score">%1$d%% confidence</string>
     <string name="home_error">Error: %1$s</string>
-    <string name="home_debug_show">Debug: raw labels</string>
-    <string name="home_debug_hide">Debug: hide raw labels</string>
-    <string name="home_latest_alert">Latest alert</string>
-    <string name="home_no_alert">No alerts yet.</string>
-    <string name="home_feed_title">Live feed</string>
     <string name="home_seconds_ago">%1$d s ago</string>
     <string name="trend_approaching">Approaching ↑</string>
     <string name="trend_steady">Steady</string>
@@ -50,6 +35,9 @@
     <string name="sound_baby_cry">Baby crying</string>
     <string name="sound_speech">Speech</string>
     <string name="sound_dog_bark">Dog barking</string>
+    <string name="sound_cat">Cat meowing</string>
+    <string name="sound_farm_animal">Farm animal</string>
+    <string name="sound_bird">Bird</string>
     <string name="permission_title">Welcome to Aware</string>
     <string name="permission_microphone_explanation">Aware needs microphone access to recognize nearby sounds. Sound alerts stay on your device. Speech recognition prefers offline models; captions and name detection may use the network when offline speech is unavailable.</string>
     <string name="permission_notifications_explanation">Allow notifications so Aware can show sound alerts while listening in the background.</string>
@@ -58,7 +46,6 @@
     <string name="try_permissions_again">Try again</string>
     <string name="open_app_settings">Open app settings</string>
     <string name="home_test_haptics">Test vibrations</string>
-    <string name="alert_replay_hint">Tap to feel the vibration again</string>
     <string name="message_approaching">getting closer</string>
     <string name="message_steady">nearby</string>
     <string name="message_fading">moving away</string>
@@ -77,6 +64,9 @@
     <string name="alert_baby_cry">Baby is crying. Check on the baby.</string>
     <string name="alert_speech">Someone is speaking nearby.</string>
     <string name="alert_dog_bark">Dog barking %1$s.</string>
+    <string name="alert_cat">Cat meowing %1$s.</string>
+    <string name="alert_farm_animal">Farm animal sounds %1$s.</string>
+    <string name="alert_bird">Bird calling %1$s.</string>
     <string name="emergency_dismiss">I\'M SAFE — DISMISS</string>
     <string name="emergency_timed_out">Vibration stopped after 30 seconds.</string>
     <string name="haptics_title">Test vibrations</string>
@@ -94,6 +84,9 @@
     <string name="pattern_beep">Three soft, even beeps</string>
     <string name="pattern_water">One long, soft hum</string>
     <string name="pattern_dog">Short, choppy pulses</string>
+    <string name="pattern_cat">Soft double tap</string>
+    <string name="pattern_farm_animal">Two long, low pulses</string>
+    <string name="pattern_bird">Light, quick trill</string>
     <string name="pattern_name">Three quick, light taps</string>
     <string name="pattern_silent">No vibration</string>
     <string name="settings_title">Settings</string>
@@ -132,20 +125,20 @@
     <string name="situation_title">Situation</string>
     <string name="situation_ai">On-device AI</string>
     <string name="situation_template">Quick summary</string>
-    <string name="llm_setting">Smart summaries (on-device AI)</string>
+    <string name="llm_setting">On-device AI (Gemma 4 E2B)</string>
     <string name="llm_not_installed">Model not installed</string>
-    <string name="llm_unsupported">Not supported on this phone (needs 4 GB RAM)</string>
+    <string name="llm_unsupported">Not supported on this phone (needs 7 GB RAM)</string>
     <string name="llm_idle">Model installed. Loads when needed.</string>
     <string name="llm_loading">Loading…</string>
     <string name="llm_ready">Ready</string>
-    <string name="llm_disabled">Smart summaries disabled</string>
+    <string name="llm_disabled">AI paused</string>
     <string name="llm_failed">Failed: %1$s</string>
-    <string name="llm_import">Import model file (.task)</string>
+    <string name="llm_import">Import model file (.litertlm)</string>
     <string name="llm_remove">Remove model</string>
     <string name="llm_import_progress">Importing model: %1$d%%</string>
     <string name="llm_import_failed">Could not import model</string>
     <string name="llm_remove_failed">Could not remove model</string>
-    <string name="llm_help">Download a Gemma 3 1B int4 .task model (litert-community on Hugging Face), then import it here or adb push it to /data/local/tmp/llm/model.task.</string>
+    <string name="llm_help">Download gemma-4-E2B-it.litertlm (about 2.6 GB), then import it here. It triages alerts and writes summaries on this phone; without it the app uses simple built-in rules.</string>
     <string name="asl_interpreter">ASL Interpreter</string>
     <string name="avatar_loading">Loading signing avatar…</string>
     <string name="avatar_failed">Avatar unavailable. Live captions still work.</string>

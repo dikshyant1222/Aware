@@ -4,7 +4,7 @@ interface SituationSummarizer {
     suspend fun summarize(context: SituationContext): Summary?
 }
 
-data class Summary(val text: String, val source: Source)
+data class Summary(val text: String, val source: Source, val urgency: Urgency? = null)
 enum class Source { LLM, TEMPLATE }
 
 sealed interface LlmStatus {

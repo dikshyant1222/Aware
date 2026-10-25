@@ -58,7 +58,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.mediapipe.tasks.audio)
-    implementation(libs.mediapipe.tasks.genai)
+    implementation(libs.litertlm.android)
     implementation(libs.mlkit.translate)
     testImplementation(libs.junit)
     androidTestImplementation("androidx.test:runner:1.6.2")

@@ -14,8 +14,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import com.aware.app.ui.theme.*
+import android.content.pm.ApplicationInfo
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,14 +43,13 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onTestHaptics: () -> Unit, onCaptions: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onTestHaptics: () -> Unit) {
     val context = LocalContext.current
     val repository = context.settingsRepository
     val stored by repository.settings.collectAsStateWithLifecycle<Settings?>(null)
     val scope = rememberCoroutineScope()
     val settings = stored
     if (settings == null) { CircularProgressIndicator(); return }
-    var name by rememberSaveable { mutableStateOf(settings.userName) }
     var sensitivity by rememberSaveable { mutableFloatStateOf(settings.sensitivity) }
     var expanded by remember { mutableStateOf(false) }
     var downloadStatus by remember { mutableIntStateOf(0) }
@@ -74,35 +79,41 @@ fun SettingsScreen(onBack: () -> Unit, onTestHaptics: () -> Unit, onCaptions: ()
             }
         }
     }
-    Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+    AwareBackdrop {
+    Box(Modifier.fillMaxSize().safeDrawingPadding().imePadding(), contentAlignment = Alignment.TopCenter) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp).padding(bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            Modifier.widthIn(max = 480.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 108.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 56.dp)) { Text(stringResource(R.string.haptics_back)) }
-            Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineLarge)
+            AwareHeader(stringResource(R.string.settings_title), onBack)
+            SettingsGroup(stringResource(R.string.ui_sound_categories)) {
             Category.entries.forEach { category ->
                 val label = categoryName(category)
                 Row(Modifier.fillMaxWidth().heightIn(min = 64.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CategoryIcon(category, Modifier.size(32.dp))
-                    Text(label, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                    if (LocalDensity.current.fontScale <= 1.3f) TintedIconWell(categoryIcon(category), categoryColor(category))
+                    Text(label, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     Switch(checked = category in settings.enabledCategories,
                         modifier = Modifier.semantics { contentDescription = label },
                         onCheckedChange = { enabled -> scope.launch { repository.setCategory(category, enabled) } })
                 }
             }
-            OutlinedTextField(name, onValueChange = { value ->
-                name = value
-                scope.launch { repository.setUserName(value) }
-            }, label = { Text(stringResource(R.string.settings_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            val detectLabel = stringResource(R.string.settings_detect_name)
-            Row(Modifier.fillMaxWidth().heightIn(min = 64.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(detectLabel, Modifier.weight(1f))
-                Switch(settings.nameDetection, { enabled -> scope.launch { repository.setNameDetection(enabled) } },
-                    modifier = Modifier.semantics { contentDescription = detectLabel })
             }
-            if (Build.VERSION.SDK_INT < 33) Text(stringResource(R.string.name_legacy_limitation))
+            SettingsGroup(stringResource(R.string.profile_title)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TintedIconWell(Icons.Default.Person, AwareAccent)
+                    Column(Modifier.weight(1f)) {
+                        Text(settings.userName, style = MaterialTheme.typography.titleMedium)
+                        if (settings.dateOfBirth.isNotEmpty()) Text(java.time.LocalDate.parse(settings.dateOfBirth)
+                            .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)),
+                            style = MaterialTheme.typography.bodyMedium, color = AwareSecondary)
+                    }
+                    Icon(Icons.Default.Lock, stringResource(R.string.profile_fixed), tint = AwareSecondary)
+                }
+                Text(stringResource(R.string.profile_name_detection), color = AwareAccent, style = MaterialTheme.typography.bodyMedium)
+            }
+            SettingsGroup(stringResource(R.string.ui_detection)) {
+            Text(stringResource(R.string.ui_sensitivity_hint), color = AwareSecondary, style = MaterialTheme.typography.bodyMedium)
             Text(stringResource(R.string.settings_sensitivity, (sensitivity * 100).roundToInt()), style = MaterialTheme.typography.titleLarge)
             val sensitivityLabel = stringResource(R.string.settings_sensitivity, (sensitivity * 100).roundToInt())
             Slider(value = sensitivity, modifier = Modifier.semantics { contentDescription = sensitivityLabel }, onValueChange = { value ->
@@ -112,10 +123,14 @@ fun SettingsScreen(onBack: () -> Unit, onTestHaptics: () -> Unit, onCaptions: ()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(stringResource(R.string.sensitivity_low)); Text(stringResource(R.string.sensitivity_high))
             }
-            Text(stringResource(R.string.settings_translation), style = MaterialTheme.typography.titleLarge)
+            }
+            SettingsGroup(stringResource(R.string.ui_language_speech)) {
+            Text(stringResource(R.string.settings_translation), style = MaterialTheme.typography.titleMedium)
             Box {
-                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
-                    Text(settings.translationTarget?.let { Locale.forLanguageTag(it).displayName } ?: stringResource(R.string.translation_none))
+                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(14.dp)) {
+                    Icon(Icons.Default.Translate, null, Modifier.size(20.dp))
+                    Text(settings.translationTarget?.let { Locale.forLanguageTag(it).displayName } ?: stringResource(R.string.translation_none), Modifier.weight(1f).padding(horizontal = 12.dp))
+                    Icon(Icons.Default.ExpandMore, null)
                 }
                 DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.translation_none)) }, onClick = { selectLanguage(null) })
@@ -127,11 +142,20 @@ fun SettingsScreen(onBack: () -> Unit, onTestHaptics: () -> Unit, onCaptions: ()
             if (downloadStatus != 0) Text(stringResource(downloadStatus))
             if (downloadStatus == R.string.model_downloading) LinearProgressIndicator(Modifier.fillMaxWidth())
             OfflineSpeechStatus()
-            SmartSummarySetting(settings.smartSummaries) { enabled -> scope.launch { repository.setSmartSummaries(enabled) } }
-            FullScreenAlertSetting()
-            TextButton(onClick = onTestHaptics, modifier = Modifier.heightIn(min = 64.dp)) { Text(stringResource(R.string.home_test_haptics)) }
+            }
+
+            SettingsGroup(stringResource(R.string.llm_setting)) { SmartSummarySetting() }
+            if (Build.VERSION.SDK_INT >= 34) SettingsGroup(stringResource(R.string.ui_device_permissions)) { FullScreenAlertSetting() }
+            if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+                var toolsExpanded by rememberSaveable { mutableStateOf(false) }
+                TextButton({ toolsExpanded = !toolsExpanded }) { Text(stringResource(R.string.ui_developer_tools)) }
+                if (toolsExpanded) SettingsGroup(stringResource(R.string.ui_developer_tools)) {
+                    TextButton(onTestHaptics) { Text(stringResource(R.string.home_test_haptics)) }
+                    SoundDiagnostics()
+                }
+            }
         }
-        CaptionsBubble(onCaptions, Modifier.align(Alignment.BottomEnd).padding(16.dp))
+    }
     }
 }
 
@@ -147,7 +171,8 @@ private fun FullScreenAlertSetting() {
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
-    if (!allowed) Card(onClick = {
+    if (allowed) Text(stringResource(R.string.ui_full_screen_allowed), color = AwareAccent)
+    else Card(onClick = {
         context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
             Uri.fromParts("package", context.packageName, null)))
     }, modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)) {
@@ -200,8 +225,11 @@ private fun OfflineSpeechStatus() {
         lifecycle.addObserver(observer)
         onDispose { disposed = true; lifecycle.removeObserver(observer); device?.destroy(); recognizer = null }
     }
-    Text(stringResource(status), style = MaterialTheme.typography.titleLarge)
-    if (Build.VERSION.SDK_INT in 31..32 && status == R.string.speech_ready) Text(stringResource(R.string.speech_locale_unverified))
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.Hearing, null, Modifier.size(20.dp), tint = AwareSecondary)
+        Text(stringResource(status), Modifier.weight(1f).padding(horizontal = 10.dp), style = MaterialTheme.typography.bodyMedium)
+        IconButton({ refresh++ }) { Icon(Icons.Default.Refresh, stringResource(R.string.speech_refresh)) }
+    }
     if (canDownload) Button(onClick = {
         if (Build.VERSION.SDK_INT >= 33) {
             try {
@@ -210,5 +238,5 @@ private fun OfflineSpeechStatus() {
             } catch (_: RuntimeException) { status = R.string.model_download_failed }
         }
     }, modifier = Modifier.heightIn(min = 64.dp)) { Text(stringResource(R.string.speech_download)) }
-    TextButton(onClick = { refresh++ }, modifier = Modifier.heightIn(min = 56.dp)) { Text(stringResource(R.string.speech_refresh)) }
+
 }

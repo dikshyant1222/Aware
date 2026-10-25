@@ -18,6 +18,8 @@ import com.aware.app.MainActivity
 import com.aware.app.R
 import com.aware.app.haptics.HapticEvent
 import com.aware.app.haptics.HapticPlayer
+import com.aware.app.llm.AlertTriage
+import com.aware.app.llm.Urgency
 import com.aware.app.ui.EmergencyActivity
 import com.aware.app.ui.categoryColor
 
@@ -29,6 +31,7 @@ class AlertReactor(context: Context) {
 
     fun react(detection: Detection) {
         if (!detection.isNew || !detection.type.alerts) return
+        if (AlertTriage.isMuted(detection.type, System.currentTimeMillis())) return
         haptics.play(HapticEvent.from(detection.type))
         val emergency = detection.type.category == Category.EMERGENCY
         val message = messages.templateFor(detection)
@@ -40,7 +43,7 @@ class AlertReactor(context: Context) {
                 putExtra(EmergencyActivity.EXTRA_TREND, detection.trend.name)
             }
         } else Intent(context, MainActivity::class.java)
-        postNotification(detection, message, intent)
+        postNotification(detection.type.category, message, intent, detection.type.displayName)
         if (emergency && ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             try {
                 context.startActivity(intent)
@@ -53,20 +56,30 @@ class AlertReactor(context: Context) {
     fun nameCalled(timeMs: Long) {
         haptics.play(HapticEvent.NAME_CALLED)
         val message = context.getString(R.string.alert_name_called)
+        postNotification(Category.PEOPLE, message, Intent(context, MainActivity::class.java), message)
+    }
+
+    /**
+     * A situation more serious than its individual alerts, such as smoke alarm plus screaming.
+     * [silent] only refreshes the text of the notification already shown, without vibrating again.
+     */
+    fun escalate(urgency: Urgency, message: String, silent: Boolean) {
+        if (!silent) haptics.play(HapticEvent.URGENT)
         postNotification(
-            Detection(SoundType.SPEECH, 1f, Trend.STEADY, -90f, timeMs, true),
-            message, Intent(context, MainActivity::class.java), message,
+            Category.EMERGENCY, message, Intent(context, MainActivity::class.java),
+            context.getString(R.string.alert_urgent_title), ESCALATION_ID, urgency == Urgency.CRITICAL, silent,
         )
     }
 
-    private fun postNotification(detection: Detection, message: String, intent: Intent, title: String = detection.type.displayName) {
+    private fun postNotification(
+        category: Category, message: String, intent: Intent, title: String,
+        id: Int = notificationId(category), emergency: Boolean = category == Category.EMERGENCY, onlyAlertOnce: Boolean = false,
+    ) {
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
                 context, Manifest.permission.POST_NOTIFICATIONS,
             ) != PackageManager.PERMISSION_GRANTED) return
         if (!notifications.areNotificationsEnabled()) return
-        val category = detection.type.category
-        val emergency = category == Category.EMERGENCY
-        val pending = PendingIntent.getActivity(context, notificationId(category), intent,
+        val pending = PendingIntent.getActivity(context, id, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val builder = NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
@@ -77,13 +90,14 @@ class AlertReactor(context: Context) {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pending)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(onlyAlertOnce)
             .setCategory(if (emergency) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_EVENT)
             .setPriority(if (emergency) NotificationCompat.PRIORITY_MAX else NotificationCompat.PRIORITY_HIGH)
         try {
             if (emergency && (Build.VERSION.SDK_INT < 34 || notifications.canUseFullScreenIntent())) {
                 builder.setFullScreenIntent(pending, true)
             }
-            notifications.notify(notificationId(category), builder.build())
+            notifications.notify(id, builder.build())
         } catch (_: SecurityException) {
             // A permission can be revoked between the check and notify; haptics still play.
         }
@@ -93,6 +107,7 @@ class AlertReactor(context: Context) {
 
     companion object {
         private const val CHANNEL_ALERTS = "alerts"
+        private const val ESCALATION_ID = 200
 
         fun notificationId(category: Category): Int = 100 + category.ordinal
 

@@ -60,6 +60,11 @@ import com.aware.app.alert.Trend
 import com.aware.app.haptics.HapticEvent
 import com.aware.app.haptics.HapticPlayer
 import com.aware.app.ui.theme.AwareTheme
+import com.aware.app.ui.theme.EmergencyTitle
+import com.aware.app.ui.theme.EmergencyMessage
+import com.aware.app.ui.theme.EmergencyStatus
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.unit.sp
 
 class EmergencyActivity : ComponentActivity() {
     private lateinit var haptics: HapticPlayer
@@ -198,12 +203,12 @@ private fun EmergencyContent(sound: SoundType, message: String, trend: Trend, an
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         Icon(Icons.Default.Warning, stringResource(R.string.category_emergency), Modifier.size(120.dp), tint = Color.White)
-        Text(soundName(sound), color = Color.White, style = MaterialTheme.typography.displayMedium)
-        Text(message, color = Color.White, style = MaterialTheme.typography.titleLarge)
-        Text(trendText(trend), color = Color.White, style = MaterialTheme.typography.headlineMedium)
-        Button(onClick = dismiss, modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp)) {
-            Text(stringResource(R.string.emergency_dismiss), style = MaterialTheme.typography.titleLarge)
+        Text(soundName(sound), color = Color.White, style = EmergencyTitle)
+        Text(message, color = Color.White, style = EmergencyMessage)
+        Text(trendText(trend), color = Color.White, style = EmergencyStatus)
+        Button(onClick = dismiss, modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) {
+            Text(stringResource(R.string.emergency_dismiss), style = EmergencyMessage)
         }
-        if (!active) Text(stringResource(R.string.emergency_timed_out), color = Color.White, style = MaterialTheme.typography.bodyLarge)
+        if (!active) Text(stringResource(R.string.emergency_timed_out), color = Color.White, fontSize = 22.sp, lineHeight = 32.sp)
     }
 }

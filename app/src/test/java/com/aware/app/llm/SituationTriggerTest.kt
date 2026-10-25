@@ -17,7 +17,8 @@ class SituationTriggerTest {
     }
     @Test fun onlyHomePeopleAndEmergencyAlerts() {
         SoundType.entries.forEach { type ->
-            val expected = type !in listOf(SoundType.SPEECH, SoundType.DOG_BARK, SoundType.VEHICLE, SoundType.CAR_HORN, SoundType.BICYCLE_BELL)
+            val expected = type !in listOf(SoundType.SPEECH, SoundType.DOG_BARK, SoundType.VEHICLE, SoundType.CAR_HORN, SoundType.BICYCLE_BELL,
+                SoundType.CAT, SoundType.FARM_ANIMAL, SoundType.BIRD)
             assertEquals(type.name, expected, shouldAutoSummarize(type, 10_000, 10_000, 10_000, null))
         }
     }

@@ -21,6 +21,9 @@ class AlertMessages(private val getString: (Int) -> String) {
             SoundType.BABY_CRY -> R.string.alert_baby_cry
             SoundType.SPEECH -> R.string.alert_speech
             SoundType.DOG_BARK -> R.string.alert_dog_bark
+            SoundType.CAT -> R.string.alert_cat
+            SoundType.FARM_ANIMAL -> R.string.alert_farm_animal
+            SoundType.BIRD -> R.string.alert_bird
         }
         val trend = getString(when (detection.trend) {
             Trend.APPROACHING -> R.string.message_approaching

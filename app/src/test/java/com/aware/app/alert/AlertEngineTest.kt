@@ -9,17 +9,18 @@ import org.junit.Test
 class AlertEngineTest {
     private val siren = listOf(Label("Siren", 0.9f))
     private val bark = listOf(Label("Bark", 0.9f))
+    private val car = listOf(Label("Car", 0.9f))
 
     private fun instant() = AlertEngine(settleMs = 0, emergencySettleMs = 0)
 
     @Test
     fun alertsWaitForTheSettlePeriodAndUseMeanConfidence() {
         val engine = AlertEngine(settleMs = 500)
-        assertTrue(engine.process(listOf(Label("Knock", 0.4f)), -40f, 0).isEmpty())
-        assertTrue(engine.process(listOf(Label("Knock", 0.6f)), -40f, 500).isEmpty()) // streak met, settling
-        // The knock ended, but its held scores still release it once the settle period is over.
+        assertTrue(engine.process(listOf(Label("Doorbell", 0.4f)), -40f, 0).isEmpty())
+        assertTrue(engine.process(listOf(Label("Doorbell", 0.6f)), -40f, 500).isEmpty()) // streak met, settling
+        // The doorbell ended, but its held scores still release it once the settle period is over.
         val alert = engine.process(emptyList(), -40f, 1_000).single()
-        assertEquals(SoundType.KNOCK, alert.type)
+        assertEquals(SoundType.DOORBELL, alert.type)
         assertTrue(alert.isNew)
         assertEquals(0.6f, alert.score, 0.0001f)
     }
@@ -34,11 +35,11 @@ class AlertEngineTest {
     @Test
     fun onlyTheMostConfidentSoundPerCategoryIsShown() {
         val engine = AlertEngine(settleMs = 500)
-        val home = listOf(Label("Knock", 0.5f), Label("Doorbell", 0.9f))
+        val home = listOf(Label("Bicycle bell", 0.5f), Label("Vehicle horn, car horn, honking", 0.9f))
         repeat(2) { engine.process(home, -40f, it * 500L) } // both pass at 500 ms, settle until 1 s
         val shown = engine.process(home + bark, -40f, 1_000)
-        assertEquals(listOf(SoundType.DOORBELL), shown.filter { it.isNew }.map { it.type })
-        // The weaker knock went into cooldown along with it, so it doesn't fire right after.
+        assertEquals(listOf(SoundType.CAR_HORN), shown.filter { it.isNew }.map { it.type })
+        // The weaker bell went into cooldown along with it, so it doesn't fire right after.
         assertTrue(engine.process(home, -40f, 1_500).none { it.isNew })
     }
 
@@ -50,7 +51,7 @@ class AlertEngineTest {
     }
 
     @Test
-    fun transientSoundsNeedFewerWindows() {
+    fun glassBreakNeedsOnlyOneWindowAndKnocksNeedTwo() {
         val engine = instant()
         assertTrue(engine.process(listOf(Label("Shatter", 0.9f)), -40f, 0).single().isNew)
         val knock = listOf(Label("Knock", 0.4f))
@@ -59,28 +60,73 @@ class AlertEngineTest {
     }
 
     @Test
+    fun burstySoundsNeedTwoHitsWithinFiveWindows() {
+        val barking = instant()
+        barking.process(bark, -40f, 0)
+        barking.process(emptyList(), -40f, 500)
+        barking.process(emptyList(), -40f, 1_000)
+        assertEquals(SoundType.DOG_BARK, barking.process(bark, -40f, 1_500).single().type)
+        val late = instant()
+        late.process(bark, -40f, 0)
+        repeat(4) { late.process(emptyList(), -40f, (it + 1) * 500L) }
+        assertTrue(late.process(bark, -40f, 2_500).isEmpty()) // the first hit is five windows back
+    }
+
+    @Test
+    fun babyCryCountsEitherCryLabelAtFullScore() {
+        val cry = listOf(Label("Crying, sobbing", 0.4f))
+        val engine = instant()
+        assertTrue(engine.process(cry, -40f, 0).isEmpty())
+        assertEquals(SoundType.BABY_CRY, engine.process(cry, -40f, 500).single().type)
+        val infant = listOf(Label("Baby cry, infant cry", 0.4f))
+        val other = instant()
+        other.process(infant, -40f, 0)
+        assertEquals(SoundType.BABY_CRY, other.process(infant, -40f, 500).single().type)
+    }
+
+    @Test
+    fun animalSoundsAlertAndBirdsNeedAClearerCall() {
+        val meow = listOf(Label("Meow", 0.5f))
+        val cat = instant()
+        cat.process(meow, -40f, 0)
+        assertEquals(SoundType.CAT, cat.process(meow, -40f, 500).single().type)
+        val moo = listOf(Label("Moo", 0.5f))
+        val farm = instant()
+        farm.process(moo, -40f, 0)
+        assertEquals(SoundType.FARM_ANIMAL, farm.process(moo, -40f, 500).single().type)
+        val faint = listOf(Label("Chirp, tweet", 0.35f))
+        val quiet = instant()
+        repeat(4) { assertTrue(quiet.process(faint, -40f, it * 500L).isEmpty()) }
+        val tweet = listOf(Label("Chirp, tweet", 0.6f))
+        val bird = instant()
+        bird.process(tweet, -40f, 0)
+        bird.process(tweet, -40f, 500)
+        assertEquals(SoundType.BIRD, bird.process(tweet, -40f, 1_000).single().type)
+    }
+
+    @Test
     fun sustainedSoundsNeedThreeConsecutiveWindows() {
         val engine = instant()
-        assertTrue(engine.process(bark, -40f, 0).isEmpty())
-        assertTrue(engine.process(bark, -40f, 500).isEmpty())
-        assertEquals(SoundType.DOG_BARK, engine.process(bark, -40f, 1_000).single().type)
+        assertTrue(engine.process(car, -40f, 0).isEmpty())
+        assertTrue(engine.process(car, -40f, 500).isEmpty())
+        assertEquals(SoundType.VEHICLE, engine.process(car, -40f, 1_000).single().type)
     }
 
     @Test
     fun oneMissIsToleratedButTwoAreNot() {
         val engine = instant()
-        engine.process(bark, -40f, 0)
-        engine.process(bark, -40f, 500)
+        engine.process(car, -40f, 0)
+        engine.process(car, -40f, 500)
         engine.process(emptyList(), -40f, 1_000)
-        assertTrue(engine.process(bark, -40f, 1_500).single().isNew)
+        assertTrue(engine.process(car, -40f, 1_500).single().isNew)
 
         val other = instant()
-        other.process(bark, -40f, 0)
+        other.process(car, -40f, 0)
         other.process(emptyList(), -40f, 500)
-        other.process(listOf(Label("Bark", 0.1f)), -40f, 1_000) // below threshold counts as a miss
-        assertTrue(other.process(bark, -40f, 1_500).isEmpty())
-        assertTrue(other.process(bark, -40f, 2_000).isEmpty())
-        assertTrue(other.process(bark, -40f, 2_500).single().isNew)
+        other.process(listOf(Label("Car", 0.1f)), -40f, 1_000) // below threshold counts as a miss
+        assertTrue(other.process(car, -40f, 1_500).isEmpty())
+        assertTrue(other.process(car, -40f, 2_000).isEmpty())
+        assertTrue(other.process(car, -40f, 2_500).single().isNew)
     }
 
     @Test
@@ -107,9 +153,9 @@ class AlertEngineTest {
     @Test
     fun normalCooldownIsEightSecondsFromFiring() {
         val engine = instant()
-        repeat(3) { engine.process(bark, -40f, it * 500L) }
-        assertFalse(engine.process(bark, -40f, 8_999).single().isNew)
-        assertTrue(engine.process(bark, -40f, 9_000).single().isNew)
+        repeat(3) { engine.process(car, -40f, it * 500L) }
+        assertFalse(engine.process(car, -40f, 8_999).single().isNew)
+        assertTrue(engine.process(car, -40f, 9_000).single().isNew)
     }
 
     @Test
@@ -128,9 +174,9 @@ class AlertEngineTest {
         val both = siren + Label("Fire alarm", 0.8f)
         engine.process(both, -40f, 0)
         assertEquals(listOf(SoundType.SIREN), engine.process(both, -40f, 500).filter { it.isNew }.map { it.type })
-        engine.process(bark, -40f, 1_000)
-        engine.process(bark, -40f, 1_500)
-        assertTrue(engine.process(bark, -40f, 2_000).single().isNew)
+        engine.process(car, -40f, 1_000)
+        engine.process(car, -40f, 1_500)
+        assertTrue(engine.process(car, -40f, 2_000).single().isNew)
     }
 
     @Test

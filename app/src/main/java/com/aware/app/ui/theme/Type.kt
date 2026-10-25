@@ -17,16 +17,21 @@ val AwareTypography = Typography(
     displayLarge = textStyle(64, 72, FontWeight.Bold),
     displayMedium = textStyle(52, 60, FontWeight.Bold),
     displaySmall = textStyle(44, 52, FontWeight.Bold),
-    headlineLarge = textStyle(36, 44, FontWeight.Bold),
-    headlineMedium = textStyle(32, 40, FontWeight.Bold),
-    headlineSmall = textStyle(28, 36, FontWeight.Bold),
-    titleLarge = textStyle(32, 40, FontWeight.Bold),
-    titleMedium = textStyle(28, 36, FontWeight.SemiBold),
-    titleSmall = textStyle(28, 36, FontWeight.SemiBold),
-    bodyLarge = textStyle(22, 32),
-    bodyMedium = textStyle(20, 30),
-    bodySmall = textStyle(20, 30),
-    labelLarge = textStyle(20, 28, FontWeight.SemiBold),
-    labelMedium = textStyle(20, 28, FontWeight.SemiBold),
-    labelSmall = textStyle(20, 28, FontWeight.SemiBold),
+    headlineLarge = textStyle(28, 36, FontWeight.SemiBold),
+    headlineMedium = textStyle(22, 28, FontWeight.SemiBold),
+    headlineSmall = textStyle(20, 26, FontWeight.SemiBold),
+    titleLarge = textStyle(18, 24, FontWeight.SemiBold),
+    titleMedium = textStyle(16, 22, FontWeight.SemiBold),
+    titleSmall = textStyle(15, 21, FontWeight.SemiBold),
+    bodyLarge = textStyle(16, 23),
+    bodyMedium = textStyle(14, 20),
+    bodySmall = textStyle(13, 18),
+    labelLarge = textStyle(14, 20, FontWeight.SemiBold),
+    labelMedium = textStyle(13, 18, FontWeight.SemiBold),
+    labelSmall = textStyle(12, 18, FontWeight.Medium),
 )
+
+// Emergency content keeps its original accessible scale independently of normal UI.
+val EmergencyTitle = textStyle(52, 60, FontWeight.Bold)
+val EmergencyMessage = textStyle(32, 40, FontWeight.Bold)
+val EmergencyStatus = textStyle(32, 40, FontWeight.Bold)

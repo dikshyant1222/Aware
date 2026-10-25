@@ -1,0 +1,42 @@
+<resources>
+    <string name="alert_urgent_title">Urgent</string>
+    <string name="ui_tap_to_start">Tap to start</string>
+    <string name="ui_home">Home</string>
+    <string name="ui_live_talk">Live Talk</string>
+    <string name="ui_summary">Summary</string>
+    <string name="ui_refresh_summary">Refresh summary</string>
+    <string name="ui_close">Close</string>
+    <string name="ui_surroundings">Surroundings</string>
+    <string name="ui_show_more">Show more</string>
+    <string name="ui_show_less">Show less</string>
+    <string name="ui_listening">Listening</string>
+    <string name="ui_paused">Paused</string>
+    <string name="ui_alerts_paused">Alerts paused</string>
+    <string name="ui_paused_hint">Tap the microphone to hear your surroundings.</string>
+    <string name="ui_summary_waiting">Your surroundings, at a glance. A summary will appear as you listen.</string>
+    <string name="ui_summary_paused">Start listening to get a summary of what’s around you.</string>
+    <string name="ui_empty_sounds">A quiet moment</string>
+    <string name="ui_empty_sounds_hint">Recent sounds will appear here as they’re heard.</string>
+    <string name="ui_last_alert">Last alert</string>
+    <string name="ui_replay">Replay vibration</string>
+    <string name="ui_details">Alert details</string>
+    <string name="ui_sound_categories">Sound categories</string>
+    <string name="ui_personal_awareness">Personal awareness</string>
+    <string name="ui_detection">Detection sensitivity</string>
+    <string name="ui_sensitivity_hint">Choose how sensitive sound detection should be.</string>
+    <string name="ui_language_speech">Language &amp; speech</string>
+    <string name="ui_smart_summaries">Smart summaries</string>
+    <string name="ui_device_permissions">Device permissions</string>
+    <string name="ui_full_screen_allowed">Full-screen alerts are allowed</string>
+    <string name="ui_developer_tools">Developer tools</string>
+    <string name="ui_permission_welcome">Stay connected to your surroundings.</string>
+    <string name="ui_permission_subtitle">Sounds, words, and the moments that matter.</string>
+    <string name="ui_just_now">Just now</string>
+    <string name="ui_minutes_ago">%1$d min ago</string>
+    <string name="ui_hours_ago">%1$d hr ago</string>
+    <plurals name="ui_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+    <string name="ui_speech_error">Speech is temporarily unavailable. Check speech availability in Settings.</string>
+</resources>

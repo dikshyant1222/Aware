@@ -14,8 +14,8 @@ data class Detection(
 )
 
 /**
- * A sound fires when it scores above its threshold in [CategoryMapper.requiredWindows] of the last
- * requiredWindows + 1 windows, so one weak window in the middle doesn't reset it. It can optionally be
+ * A sound fires when it scores above its threshold in [CategoryMapper.requiredWindows] of its last
+ * [CategoryMapper.windowSpan] windows, so one weak window in the middle doesn't reset it. It can optionally be
  * held for a settle period (default none); its confidence is the mean score while held, and only the
  * most confident sound per category is shown when several fire together.
  */
@@ -67,7 +67,7 @@ class AlertEngine(
         windowIndex++
         for (type in scores.keys) hits.getOrPut(type) { ArrayDeque() }.addLast(windowIndex)
         hits.entries.removeAll { (type, windows) ->
-            val span = CategoryMapper.requiredWindows(type) + 1
+            val span = CategoryMapper.windowSpan(type)
             while (windows.isNotEmpty() && windows.first() <= windowIndex - span) windows.removeFirst()
             windows.isEmpty()
         }

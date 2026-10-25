@@ -31,6 +31,8 @@ object CategoryMapper {
         "Water tap, faucet" to SoundType.WATER_RUNNING,
         "Sink (filling or washing)" to SoundType.WATER_RUNNING,
         "Baby cry, infant cry" to SoundType.BABY_CRY,
+        // YAMNet splits one cry across these two labels, and a real cry often scores higher on the second.
+        "Crying, sobbing" to SoundType.BABY_CRY,
         "Speech" to SoundType.SPEECH,
         "Conversation" to SoundType.SPEECH,
         "Narration, monologue" to SoundType.SPEECH,
@@ -39,6 +41,26 @@ object CategoryMapper {
         "Bark" to SoundType.DOG_BARK,
         "Bow-wow" to SoundType.DOG_BARK,
         "Yip" to SoundType.DOG_BARK,
+        "Howl" to SoundType.DOG_BARK,
+        "Cat" to SoundType.CAT,
+        "Meow" to SoundType.CAT,
+        "Caterwaul" to SoundType.CAT,
+        "Livestock, farm animals, working animals" to SoundType.FARM_ANIMAL,
+        "Cattle, bovinae" to SoundType.FARM_ANIMAL,
+        "Moo" to SoundType.FARM_ANIMAL,
+        "Neigh, whinny" to SoundType.FARM_ANIMAL,
+        "Pig" to SoundType.FARM_ANIMAL,
+        "Oink" to SoundType.FARM_ANIMAL,
+        "Goat" to SoundType.FARM_ANIMAL,
+        "Sheep" to SoundType.FARM_ANIMAL,
+        "Bleat" to SoundType.FARM_ANIMAL,
+        "Chicken, rooster" to SoundType.FARM_ANIMAL,
+        "Crowing, cock-a-doodle-doo" to SoundType.FARM_ANIMAL,
+        "Bird vocalization, bird call, bird song" to SoundType.BIRD,
+        "Chirp, tweet" to SoundType.BIRD,
+        "Squawk" to SoundType.BIRD,
+        "Crow" to SoundType.BIRD,
+        "Owl" to SoundType.BIRD,
     )
 
     // Alarm includes alarm clocks; Glass includes clinks; Tap includes ordinary impacts.
@@ -49,6 +71,8 @@ object CategoryMapper {
     fun minimumScore(type: SoundType): Float = when (type) {
         SoundType.SIREN, SoundType.SMOKE_ALARM, SoundType.SCREAM -> 0.22f
         SoundType.GLASS_BREAK -> 0.35f
+        // Birdsong is nearly constant outdoors, so it needs a clearer call than other animals.
+        SoundType.BIRD -> 0.40f
         SoundType.VEHICLE, SoundType.WATER_RUNNING, SoundType.APPLIANCE_BEEP -> 0.40f
         SoundType.SPEECH -> 0.40f
         else -> 0.30f
@@ -60,6 +84,14 @@ object CategoryMapper {
         SoundType.GLASS_BREAK -> 1
         SoundType.SIREN, SoundType.SMOKE_ALARM, SoundType.SCREAM -> 2
         SoundType.KNOCK, SoundType.DOORBELL, SoundType.CAR_HORN, SoundType.BICYCLE_BELL -> 2
+        SoundType.BABY_CRY, SoundType.DOG_BARK, SoundType.CAT, SoundType.FARM_ANIMAL -> 2
         else -> 3
+    }
+
+    // The recent windows a required hit may fall in. Crying and barking come in bursts with gaps,
+    // so their hits needn't be back to back.
+    fun windowSpan(type: SoundType): Int = when (type) {
+        SoundType.BABY_CRY, SoundType.DOG_BARK, SoundType.CAT, SoundType.FARM_ANIMAL -> requiredWindows(type) + 3
+        else -> requiredWindows(type) + 1
     }
 }

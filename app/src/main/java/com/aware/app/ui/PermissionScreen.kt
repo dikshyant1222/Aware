@@ -30,12 +30,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import com.aware.app.ui.theme.*
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.aware.app.R
 
 @Composable
@@ -75,23 +87,47 @@ fun PermissionScreen(modifier: Modifier = Modifier) {
 
     if (permissionsGranted) {
         val navController = rememberNavController()
-        NavHost(navController, startDestination = "home", modifier = modifier) {
+        val entry by navController.currentBackStackEntryAsState()
+        val route = entry?.destination?.route ?: "home"
+        var summaryOpen by rememberSaveable { mutableStateOf(false) }
+        val openSettings = { navController.navigate("settings") { popUpTo("home") { saveState = true }; launchSingleTop = true; restoreState = true } }
+        val openCaptions = { navController.navigate("captions") { launchSingleTop = true } }
+        Box(modifier.fillMaxSize()) {
+        NavHost(navController, startDestination = "home", modifier = modifier,
+            enterTransition = { fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 32 } },
+            exitTransition = { fadeOut(tween(160)) },
+            popEnterTransition = { fadeIn(tween(240)) },
+            popExitTransition = { fadeOut(tween(180)) }) {
             composable("home") { HomeScreen(
-                onTestHaptics = { navController.navigate("haptics") },
-                onSettings = { navController.navigate("settings") },
-                onCaptions = { navController.navigate("captions") { launchSingleTop = true } },
+                onOpenSummary = { summaryOpen = true },
             ) }
             composable("settings") { SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onTestHaptics = { navController.navigate("haptics") },
-                onCaptions = { navController.navigate("captions") { launchSingleTop = true } },
             ) }
             composable("captions") { AslCaptionsScreen(onBack = { navController.popBackStack() }) }
+            composable("history") { SummaryHistoryScreen(onBack = { navController.popBackStack() }) }
             composable("haptics") { HapticTestScreen(onBack = { navController.popBackStack() }) }
         }
+        if (route in setOf("home", "settings", "history")) AwareFloatingDock(
+            route,
+            onHome = { navController.popBackStack("home", inclusive = false) },
+            onCaptions = openCaptions, onHistory = { navController.navigate("history") { popUpTo("home") { saveState = true }; launchSingleTop = true; restoreState = true } }, onSettings = openSettings,
+            modifier = Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(horizontal = 30.dp, vertical = 12.dp))
+        }
+        if (summaryOpen) SummarySheet { summaryOpen = false }
         return
     }
 
+    PermissionEntry(modifier, requestAttempted, onGrant = { permissionLauncher.launch(permissions) }, onOpenSettings = {
+        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
+    })
+}
+
+@Composable
+internal fun PermissionEntry(modifier: Modifier = Modifier, requestAttempted: Boolean = false,
+    onGrant: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
+    AwareBackdrop {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -100,6 +136,12 @@ fun PermissionScreen(modifier: Modifier = Modifier) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        Spacer(Modifier.height(32.dp))
+        TintedIconWell(Icons.Default.Mic, AwareAccent, Modifier.align(Alignment.CenterHorizontally).size(80.dp))
+        Text(stringResource(R.string.ui_permission_welcome), fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.ui_permission_subtitle), color = AwareSecondary)
+        Surface(shape = RoundedCornerShape(24.dp), color = AwareSurface) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             text = stringResource(R.string.permission_title),
             style = MaterialTheme.typography.headlineLarge,
@@ -114,27 +156,22 @@ fun PermissionScreen(modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyLarge,
             )
         }
+        }
+        }
         if (requestAttempted) {
             Text(
                 text = stringResource(R.string.permission_denied),
                 style = MaterialTheme.typography.bodyLarge,
             )
             Button(
-                onClick = {
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", context.packageName, null),
-                        ),
-                    )
-                },
+                onClick = onOpenSettings,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.open_app_settings))
             }
         }
         Button(
-            onClick = { permissionLauncher.launch(permissions) },
+            onClick = onGrant,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
@@ -143,5 +180,6 @@ fun PermissionScreen(modifier: Modifier = Modifier) {
                 ),
             )
         }
+    }
     }
 }

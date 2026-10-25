@@ -8,6 +8,7 @@ import com.aware.app.alert.SoundType
 import com.aware.app.alert.Trend
 import android.util.Log
 import com.aware.app.audio.AudioSource
+import com.aware.app.audio.AutoGain
 import com.aware.app.audio.rms
 import com.aware.app.audio.toDbfs
 import com.aware.app.classify.Label
@@ -89,9 +90,11 @@ class AwarePipeline(
             try {
                 // A cancelled source must finish releasing its recorder before a restart.
                 previous?.join()
+                // The level and trend stay raw; only the classifier hears the gain-lifted audio.
+                val gain = AutoGain()
                 audioSource.windows().collect { samples ->
                     val level = toDbfs(rms(samples))
-                    val labels = classifier.classify(samples, audioSource.sampleRate)
+                    val labels = classifier.classify(gain.apply(samples), audioSource.sampleRate)
                     currentCoroutineContext().ensureActive()
                     synchronized(this@AwarePipeline) {
                         if (job === session && session?.isActive == true) {
