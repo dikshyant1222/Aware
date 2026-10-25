@@ -165,6 +165,27 @@ class CaptionAnimationTest {
         }
     }
 
+    @Test fun expandedVocabularySignsGrowingCaptionsWithoutReplayingFinalWords() {
+        var lineId = 0L
+        instrumentation.runOnMainSync {
+            lineId = ListeningRepository.appendTranscript(TranscriptEvent("My mother", false, 1)).id
+        }
+        waitUntil("possessive starts signing", 5_000) { diagnostics()?.optString("currentId") == "$lineId:0" }
+        instrumentation.runOnMainSync {
+            ListeningRepository.appendTranscript(TranscriptEvent("My mother needs water", false, 2))
+            ListeningRepository.appendTranscript(TranscriptEvent("My mother needs water", true, 3))
+        }
+        waitUntil("water starts after the earlier new signs", 12_000) { diagnostics()?.optString("currentId") == "$lineId:3" }
+        javascript("window.setPlaybackPaused(true)")
+        waitUntil("water highlights its original caption range", 2_000) { hasHighlight("signing:16:21") }
+        saveImage("expanded-water.png", captureAvatar())
+        javascript("window.setPlaybackPaused(false)")
+        waitUntil("four whole-word signs finish", 5_000) { diagnostics()?.getJSONObject("stats")?.optInt("completed") == 4 }
+        val stats = requireNotNull(diagnostics()).getJSONObject("stats")
+        assertEquals(4, stats.getInt("started"))
+        assertEquals(0, stats.getInt("failed"))
+    }
+
     @Test fun wordAndLetterHandoffsStayContinuousAtSixtyFramesPerSecond() {
         javascript("""
             window.transitionReport=null;
@@ -191,7 +212,7 @@ class CaptionAnimationTest {
             })();
         """.trimIndent())
         instrumentation.runOnMainSync {
-            ListeningRepository.appendTranscript(TranscriptEvent("Hello world thank you Zoe", true, 1))
+            ListeningRepository.appendTranscript(TranscriptEvent("Water family why Zoe", true, 1))
         }
         waitUntil("continuous mixed signing sequence", 15_000) {
             javascript("window.transitionReport") is JSONObject
