@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAware } from '@/aware/AwareContext';
+import { escalationMessage } from '@/escalation';
 import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen } from '@/components/Screen';
@@ -10,7 +11,7 @@ import { ENVIRONMENT_LABELS, SOUNDS } from '@/sounds';
 import { colors, radius, spacing, type } from '@/theme';
 
 export default function ListenScreen() {
-  const { isListening, activity, error, environment, metrics, settings, startListening, stopListening, triggerDemo } = useAware();
+  const { isListening, activity, error, environment, metrics, settings, startListening, stopListening, triggerDemo, escalation, cancelContactAlert } = useAware();
   const [demoVisible, setDemoVisible] = useState(false);
   const [demoBusy, setDemoBusy] = useState<string | null>(null);
   const taps = useRef<number[]>([]);
@@ -51,6 +52,13 @@ export default function ListenScreen() {
       </Card>
 
       {error ? <Card style={styles.errorCard}><Text accessibilityRole="alert" style={styles.errorText}>{error}</Text></Card> : null}
+      {escalation && escalation.status !== 'cancelled' ? (
+        <Card>
+          <Text style={styles.sectionTitle}>Trusted-contact alert</Text>
+          <Text accessibilityLiveRegion="polite" style={styles.body}>{escalationMessage(escalation)}</Text>
+          {['pending', 'registering', 'connection_error', 'cancel_retry'].includes(escalation.status) ? <PrimaryButton label="Acknowledge & cancel contact alert" variant="secondary" onPress={() => void cancelContactAlert().catch(() => undefined)} /> : null}
+        </Card>
+      ) : null}
 
       <View style={styles.metricsRow}>
         <Card style={styles.metricCard}>

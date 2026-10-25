@@ -2,6 +2,14 @@
 
 Aware is an Android-focused accessibility app for Deaf and hard-of-hearing users. It continuously listens for important environmental sounds and converts detections into high-contrast visual alerts, distinct vibration signatures, Android notifications, and a concise event history. Scope is sound awareness only. **There is no Travel mode** (no tab, onboarding option, route, or announcement API).
 
+## Trusted-contact SMS addition
+
+The trusted-contact feature is an explicit exception to the stateless-backend and phone-only-data requirements below. Settings stores one contact (name, international phone number, recipient agreement), the user's name, enablement, and a 30/60/120-second wait locally. Real critical fire/smoke and siren alerts arm one server-managed escalation per unacknowledged incident; repeats do not reset the deadline. Demos never send SMS. Acknowledge cancels pending SMS; network failures persist cancellation intent and retry on reconnection/app reopening. Listen and Settings expose pending status and cancellation after app restart. Android Back and notification opening do not acknowledge.
+
+Optional Twilio configuration and a private-installation access key enable the API. SQLite persists pending countdowns independently of the app. The backend temporarily stores the phone number, user name, class and deadline; number/name are removed after cancellation or a send attempt, and status records expire after 24 hours. Provider timeouts are unknown, not retried blindly. Queued, sent, delivered, failed, cancelled and unconfirmed states are distinct. Sending cannot be recalled. Overdue incidents older than five minutes fail after a server outage. One server worker and persistent storage are required. Public deployment requires per-user authentication and abuse controls; the shared key is only for a private hackathon installation.
+
+Endpoints: authenticated `GET /api/escalations` readiness; idempotent `PUT /api/escalations/{id}` schedule; `POST /api/escalations/{id}/cancel` cancellation (including a pre-registration tombstone); `GET /api/escalations/{id}` status. See root README for setup. No audio or location is included in SMS.
+
 ## 1. Navigation
 Three tabs: **Listen**, **Events**, **Settings**. Extra screens: **Onboarding**, **Teach a Sound**, **Privacy**.
 

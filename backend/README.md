@@ -57,3 +57,7 @@ noncritical results require frontend confirmation in a nearby segment. Critical
 possible results alert immediately. This service is an accessibility aid, not a
 certified life-safety device.
 
+# Optional trusted-contact SMS
+
+See the root [README](../README.md#trusted-contact-alerts) for Twilio setup and deployment. `backend/escalation.py` adds an authenticated, SQLite-backed countdown worker for unacknowledged critical alerts. This is an explicit exception to the stateless server descriptions in this document: escalation contact data is temporary; recordings remain unretained. Run one uvicorn worker with persistent storage. Tests mock all provider requests.
+

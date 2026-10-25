@@ -2,6 +2,10 @@
 
 Spec: `memory/PRD.md` (source of truth). This file fixes the technical decisions and the backend↔frontend contract so the two halves can be built in parallel.
 
+## Trusted-contact SMS extension
+
+Optional SMS escalation adds `backend/escalation.py`, durable SQLite countdowns, and Twilio HTTP delivery. This is an explicit exception to the stateless and phone-only statements below: enabled critical alerts temporarily store the recipient number, user name, sound class and deadline on the server. Numbers/names are cleared on cancellation or a send attempt; status records expire after 24 hours. Frontend `src/escalation.ts` persists contact settings, registration and cancellation intent locally; Settings and Listen expose status/cancellation. Acknowledge cancels a pending real critical incident. Demo alerts never send SMS. See root README and PRD addition for configuration, API, privacy and single-worker deployment limits.
+
 ## Stack
 | Layer | Choice |
 |---|---|

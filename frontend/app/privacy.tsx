@@ -6,6 +6,7 @@ import { Screen } from '@/components/Screen';
 import { colors, spacing, type } from '@/theme';
 
 const ITEMS = [
+  ['account-alert-outline', 'Optional trusted-contact SMS', 'Your saved contact stays on this phone. For an enabled critical alert, the server temporarily stores the phone number, your name, and sound class to schedule SMS. The number and name are removed after cancellation or a send attempt; status records expire after 24 hours. Twilio processes the recipient and message. A scheduled SMS continues if the app closes; reconnect to cancel it.'],
   ['memory', 'Audio is decoded in memory', 'The backend deletes uploaded raw bytes immediately after decoding. Audio is never retained by the service.'],
   ['text-box-outline', 'Only text summaries are stored', 'Event class, label, confidence, context, and grouping metadata are saved only on this phone for history.'],
   ['account-check-outline', 'Jev receives text only', 'Duplicate grouping uses event metadata, never recordings. Jev never suppresses an alert.'],

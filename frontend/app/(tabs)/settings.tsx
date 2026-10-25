@@ -7,6 +7,7 @@ import { notificationPermissionStatus, useAware } from '@/aware/AwareContext';
 import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen } from '@/components/Screen';
+import { TrustedContactCard } from '@/components/TrustedContactCard';
 import { requestNotificationPermission } from '@/notify';
 import { SENSITIVITY_LABELS, SOUNDS, type Sensitivity } from '@/sounds';
 import { colors, radius, spacing, type } from '@/theme';
@@ -47,6 +48,7 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
+      <TrustedContactCard />
       <Text style={styles.section}>Sounds</Text>
       {SOUNDS.map((sound) => (
         <Card key={sound.id}>

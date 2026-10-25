@@ -33,3 +33,6 @@ The Jest suite covers alert policy, local grouping/merge boundaries and failures
 On Windows with PowerShell script restrictions, use `npx.cmd` and `npm.cmd`.
 
 Aware requires network access for sound analysis. Android device policies may stop background work, and the app is not a certified safety device.
+# Trusted-contact alerts
+
+Settings includes one saved trusted contact, recipient agreement, your name, an enable switch, and 30/60/120-second waits. Real unacknowledged critical alerts schedule backend SMS; Acknowledge cancels before sending. Demo alerts never send SMS. Listen and Settings show delivery/cancellation state, including after app reopening. Configure `EXPO_PUBLIC_ESCALATION_API_KEY` to match the backend private-installation key; Twilio credentials belong only on the backend. See the root [README](../README.md#trusted-contact-alerts) for setup and limitations.

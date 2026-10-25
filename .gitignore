@@ -4,4 +4,6 @@ Microsoft/
 # OS
 .DS_Store
 Thumbs.db
+.test-venv/
+.tools/
 

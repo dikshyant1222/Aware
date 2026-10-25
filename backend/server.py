@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import asyncio
+from contextlib import suppress
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -25,6 +27,7 @@ from .audio_model import (
 )
 from .jev import GROUP_THRESHOLD, GROUP_WINDOW_SECONDS, HTTPJevClient, JevClient, event_text_metadata
 from .uploads import MAX_AUDIO_BYTES, MemoryUploadRoute
+from .escalation import from_environment, router_for
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -182,6 +185,7 @@ def create_app(
     jev_client: JevClient | None = None,
     groq_verifier: GroqVerifier | None = None,
 ) -> FastAPI:
+    escalation_service = from_environment()
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         if analyzer is None:
@@ -191,10 +195,19 @@ def create_app(
             application.state.analyzer = analyzer
         application.state.jev = jev_client or HTTPJevClient(os.getenv("JEV_API_URL"), os.getenv("JEV_API_KEY"))
         application.state.groq = groq_verifier or GroqVerifier(os.getenv("GROQ_API_KEY"), os.getenv("GROQ_MODEL"))
-        yield
+        worker = asyncio.create_task(escalation_service.run()) if escalation_service.configured else None
+        try:
+            yield
+        finally:
+            if worker:
+                worker.cancel()
+                with suppress(asyncio.CancelledError):
+                    await worker
+            escalation_service.db.close()
 
     application = FastAPI(title="Aware API", version=VERSION, lifespan=lifespan)
     application.router.route_class = MemoryUploadRoute
+    application.include_router(router_for(escalation_service))
     origins = [item.strip() for item in os.getenv("CORS_ORIGINS", "*").split(",") if item.strip()]
     application.add_middleware(
         CORSMiddleware,

@@ -1,13 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAware } from '@/aware/AwareContext';
+import { escalationMessage } from '@/escalation';
 import { ENVIRONMENT_LABELS, SOUND_BY_ID } from '@/sounds';
 import { colors, radius, spacing, type } from '@/theme';
 
 export function AlertOverlay() {
-  const { currentAlert, queuedAlerts, acknowledge } = useAware();
+  const { currentAlert, queuedAlerts, acknowledge, escalation, trustedContact } = useAware();
   if (!currentAlert) return null;
 
   const { detection, metrics, environment, demo } = currentAlert;
@@ -18,9 +19,9 @@ export function AlertOverlay() {
       : { background: colors.attentionDark, accent: colors.attention };
 
   return (
-    <Modal visible animationType="fade" statusBarTranslucent onRequestClose={acknowledge}>
+    <Modal visible animationType="fade" statusBarTranslucent onRequestClose={() => undefined}>
       <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-        <View style={styles.container} accessibilityViewIsModal>
+        <ScrollView contentContainerStyle={styles.container} accessibilityViewIsModal>
           {demo ? <Text style={styles.demo}>DEMO ALERT</Text> : null}
           <MaterialCommunityIcons name={SOUND_BY_ID[detection.class_id].icon} size={104} color={palette.accent} accessibilityElementsHidden />
           <Text accessibilityRole="alert" style={[styles.name, { color: palette.accent }]}>{detection.label}</Text>
@@ -35,6 +36,7 @@ export function AlertOverlay() {
           </View>
 
           {queuedAlerts > 0 ? <Text style={styles.queued}>{queuedAlerts} more alert{queuedAlerts === 1 ? '' : 's'} waiting</Text> : null}
+          {detection.critical && !demo && (trustedContact.enabled || escalation) ? <Text accessibilityLiveRegion="polite" style={styles.queued}>{escalationMessage(escalation)}</Text> : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Acknowledge ${detection.label} alert`}
@@ -43,7 +45,7 @@ export function AlertOverlay() {
           >
             <Text style={styles.acknowledgeText}>ACKNOWLEDGE</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     </Modal>
   );
@@ -60,7 +62,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, gap: spacing.md },
+  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, gap: spacing.md },
   demo: { color: colors.text, fontWeight: '900', fontSize: type.label, letterSpacing: 2, borderWidth: 2, borderColor: colors.text, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.sm },
   name: { fontSize: 42, lineHeight: 48, fontWeight: '900', textAlign: 'center' },
   confidence: { color: colors.text, fontSize: type.heading, fontWeight: '900', letterSpacing: 3 },

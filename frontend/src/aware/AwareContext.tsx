@@ -45,6 +45,7 @@ import {
   type SoundId,
 } from '@/sounds';
 import { loadCustomSound, loadEvents, saveCustomSound, saveEvents } from '@/storage';
+import { DEFAULT_CONTACT, EscalationManager, loadContact, storeContact, validateContact, escalationRequest, type TrustedContact, type EscalationState } from '@/escalation';
 import { addToHistory } from '@/utils/eventHistory';
 import {
   acknowledgeAlert,
@@ -131,6 +132,10 @@ type ContextValue = {
   stopListening: () => Promise<void>;
   acknowledge: () => void;
   triggerDemo: (id: SoundId) => Promise<void>;
+  trustedContact: TrustedContact;
+  saveTrustedContact: (contact: TrustedContact) => Promise<void>;
+  escalation: EscalationState | null;
+  cancelContactAlert: () => Promise<void>;
 };
 
 const AwareContext = createContext<ContextValue | null>(null);
@@ -169,6 +174,11 @@ export function AwareProvider({ children }: PropsWithChildren) {
   const [alerts, setAlerts] = useState<AlertQueueState<AlertData>>({ current: null, queued: [] });
   const [taughtSound, setTaughtSound] = useState<CustomSound | null>(null);
   const [events, setEvents] = useState<EventRecord[]>([]);
+  const [trustedContact, setTrustedContact] = useState<TrustedContact>(DEFAULT_CONTACT);
+  const contactRef = useRef(trustedContact);
+  const [escalation, setEscalation] = useState<EscalationState | null>(null);
+  const escalationManager = useRef<EscalationManager | null>(null);
+  if (!escalationManager.current) escalationManager.current = new EscalationManager(setEscalation);
   const eventsRef = useRef<EventRecord[]>([]);
   const customSoundRef = useRef<CustomSound | null>(null);
   const historyQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -217,6 +227,31 @@ export function AwareProvider({ children }: PropsWithChildren) {
   const restoreListeningRef = useRef(false);
   const restoreAttemptedRef = useRef(false);
 
+  const saveTrustedContact = useCallback(async (contact: TrustedContact) => {
+    const cleaned = { ...contact, name: contact.name.trim(), userName: contact.userName.trim(), phone: contact.phone.replace(/[\s()-]/g, '') };
+    if (cleaned.enabled) {
+      const problem = validateContact(cleaned);
+      if (problem) throw new Error(problem);
+      await escalationRequest('');
+    }
+    // Changing/removing the contact cancels the already scheduled incident first.
+    if (escalationManager.current?.state) {
+      await escalationManager.current.cancel();
+      if (escalationManager.current.state.status === 'cancel_retry' || escalationManager.current.state.status === 'pending' || escalationManager.current.state.status === 'registering') {
+        throw new Error('Could not confirm cancellation of the pending SMS. Reconnect and try again.');
+      }
+    }
+    await storeContact(cleaned);
+    contactRef.current = cleaned;
+    setTrustedContact(cleaned);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const timer = setInterval(() => { void escalationManager.current!.refresh(); }, 3000);
+    return () => clearInterval(timer);
+  }, [hydrated]);
+
   useEffect(() => {
     settingsRef.current = settings;
     if (hydrated) void AsyncStorage.setItem(STORAGE.settings, JSON.stringify(settings));
@@ -237,13 +272,17 @@ export function AwareProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     void (async () => {
       await configureNotificationChannels().catch(() => undefined);
-      const [storedSettings, onboarded, wasListening, storedEvents, customSound] = await Promise.all([
+      const [storedSettings, onboarded, wasListening, storedEvents, customSound, contact] = await Promise.all([
         AsyncStorage.getItem(STORAGE.settings),
         AsyncStorage.getItem(STORAGE.onboarding),
         AsyncStorage.getItem(STORAGE.wasListening),
         loadEvents(),
         loadCustomSound(),
+        loadContact(),
+        escalationManager.current!.restore(),
       ]);
+      contactRef.current = contact;
+      setTrustedContact(contact);
       const nextSettings = mergeSettings(storedSettings ? (JSON.parse(storedSettings) as Partial<AwareSettings>) : null);
       settingsRef.current = nextSettings;
       setSettings(nextSettings);
@@ -299,6 +338,11 @@ export function AwareProvider({ children }: PropsWithChildren) {
     }
     alertRef.current = next;
     setAlerts(next);
+
+    if (detection.critical && (detection.class_id === 'fire_alarm' || detection.class_id === 'siren')) {
+      void escalationManager.current!.arm(detection.class_id, contactRef.current, incoming.demo)
+        .catch(() => setError('Could not set up the trusted-contact alert.'));
+    }
 
     // Alert delivery is initiated first. Logging is intentionally fire-and-forget.
     void logEvent({
@@ -406,6 +450,9 @@ export function AwareProvider({ children }: PropsWithChildren) {
 
   const acknowledge = useCallback(() => {
     stopVibration();
+    if (alertRef.current.current?.detection.critical && !alertRef.current.current.demo) {
+      void escalationManager.current!.cancel().catch(() => setError('Contact cancellation could not be saved. Reconnect and cancel in Settings.'));
+    }
     const next = acknowledgeAlert(alertRef.current);
     const newlyCurrent = next.current;
     if (newlyCurrent?.deliveredBy === 'queued' && appStateRef.current === 'active') {
@@ -453,6 +500,10 @@ export function AwareProvider({ children }: PropsWithChildren) {
     events,
     clearEvents,
     saveTaughtSound,
+    trustedContact,
+    saveTrustedContact,
+    escalation,
+    cancelContactAlert: () => escalationManager.current!.cancel(),
   };
 
   return <AwareContext.Provider value={value}>{children}</AwareContext.Provider>;
