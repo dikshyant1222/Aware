@@ -58,6 +58,7 @@
     <string name="try_permissions_again">Try again</string>
     <string name="open_app_settings">Open app settings</string>
     <string name="home_test_haptics">Test vibrations</string>
+    <string name="home_demo_mode">Try guided demo</string>
     <string name="alert_replay_hint">Tap to feel the vibration again</string>
     <string name="message_approaching">getting closer</string>
     <string name="message_steady">nearby</string>
@@ -152,4 +153,18 @@
     <string name="avatar_retry">Retry avatar</string>
     <string name="avatar_signing">Signing this caption</string>
     <string name="avatar_experimental">Experimental English signs + fingerspelling. Final captions are signed in order.</string>
+    <string name="demo_title">Guided demo</string>
+    <string name="demo_back">Back</string>
+    <string name="demo_explanation">Choose a simulated sound classification to see its alert card and learn its vibration pattern. The demo uses the real alert pipeline without opening your microphone.</string>
+    <string name="demo_safety">Demo emergencies stay inside the app: no emergency notification or full-screen alert is sent.</string>
+    <string name="demo_choose">Choose a sound</string>
+    <string name="demo_try">Try</string>
+    <string name="demo_stop">Stop demo</string>
+    <string name="demo_stop_live">Stop live listening</string>
+    <string name="demo_running">Demo: %1$s</string>
+    <string name="demo_live_running">Live listening is running</string>
+    <string name="demo_processing">The alert should appear after the normal smoothing delay.</string>
+    <string name="demo_result">Demo result</string>
+    <string name="demo_category">%1$s alert</string>
+    <string name="demo_start_error">Could not start the guided demo.</string>
 </resources>

@@ -14,9 +14,9 @@ Single Gradle module `:app`, package `com.aware.app`. One audio pipeline, owned 
 foreground service, that exposes `StateFlow`s the UI observes.
 
 ```
-AudioSource (mic | demo WAV)  ──16 kHz mono PCM, ~1 s windows──►  Pipeline
+AudioSource (mic | demo fixture) ──16 kHz mono PCM, ~1 s windows──► Pipeline
    │                                                                 │
-   │   ┌─ YamnetClassifier (MediaPipe AudioClassifier, yamnet.tflite)│
+   │   ┌─ SoundClassifier (YAMNet model | deterministic demo label)  │
    │   ├─ CategoryMapper   (AudioSet label → Category)               │
    │   ├─ AlertEngine      (2–3 window smoothing, cooldown, RMS trend)
    │   │        │                                                    │
@@ -29,7 +29,7 @@ ListeningService (foreground, mic type) ── StateFlow ──► Compose UI
 
 | Package | Contents |
 |---|---|
-| `audio` | `AudioSource` interface, `MicAudioSource` (AudioRecord), `DemoAudioSource` (asset WAVs), RMS util |
+| `audio` | `AudioSource` interface, `MicAudioSource` (AudioRecord), RMS util; guided demo source lives in `demo` |
 | `classify` | `YamnetClassifier` wrapper around MediaPipe |
 | `alert` | `Category` enum, `CategoryMapper`, `AlertEngine`, `Alert`/`Trend` models |
 | `haptics` | `HapticPatterns.kt` (the **single editable config**), `HapticPlayer` |
@@ -44,7 +44,7 @@ ListeningService (foreground, mic type) ── StateFlow ──► Compose UI
 - **Mic contention (risk):** Android `SpeechRecognizer` opens its own mic, which conflicts with AudioRecord. Plan: on API 33+ feed our shared PCM to it through `EXTRA_AUDIO_SOURCE`; on older devices pause classification while the transcription bubble is active. whisper.cpp stays the fallback if offline recognition isn't available on the demo phone. Decide in step 6.
 - **LLM API (risk):** MediaPipe LLM Inference is being superseded by LiteRT-LM. Keep it behind `SituationSummarizer` so it can be swapped; the template fallback must always work.
 - **Floating bubble:** an in-app floating button on every screen that opens live transcription. A system-wide overlay (`SYSTEM_ALERT_WINDOW`) is a stretch goal.
-- **Demo mode** feeds WAVs through the *same* pipeline as the mic, so the demo exercises the real code.
+- **Demo mode** feeds paced fixture windows and deterministic labels through the same smoothing, alert-card, and haptic pipeline. It teaches the UI reliably; it is not a YAMNet accuracy test.
 
 ---
 
@@ -115,7 +115,13 @@ ListeningService (foreground, mic type) ── StateFlow ──► Compose UI
 - [x] Checks: 61/61 tests (32 + 29 new), strings 145/145, 43 Kotlin files compile; LlmInference + LlmInferenceSession APIs checked with javap against tasks-genai 0.10.27
 - ⚠️ /data/local/tmp is often unreadable by apps on newer Android, so prefer **Import model file** in Settings
 - [ ] ✅ Verified on device (with and without a model)
-### 8. Demo mode panel with bundled sounds — ⬜
+### 8. Guided demo mode — 🟡 code done, awaiting device verification
+- [x] Six deterministic scenarios: doorbell, knock, siren, glass breaking, baby crying, and running water
+- [x] Demo input uses the real `AwarePipeline`, `AlertEngine`, alert cards, and haptics without opening the microphone
+- [x] Demo emergency events suppress notifications and the full-screen emergency activity
+- [x] Demo mode is in-app only, stops when its screen/ViewModel is cleared, and cannot start during live listening
+- [x] Mapping tests verify every demo label resolves to its intended `SoundType`
+- [ ] ✅ Verified on device
 
 ---
 

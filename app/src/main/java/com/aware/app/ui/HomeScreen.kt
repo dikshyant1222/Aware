@@ -60,6 +60,7 @@ fun HomeScreen(
     onTestHaptics: () -> Unit = {},
     onSettings: () -> Unit = {},
     onCaptions: () -> Unit = {},
+    onDemo: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val running by viewModel.running.collectAsStateWithLifecycle()
@@ -109,6 +110,12 @@ fun HomeScreen(
                     TextButton(onClick = onSettings, modifier = Modifier.weight(1f).heightIn(min = 64.dp)) {
                         Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleMedium)
                     }
+                }
+                TextButton(
+                    onClick = onDemo,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                ) {
+                    Text(stringResource(R.string.home_demo_mode), style = MaterialTheme.typography.titleMedium)
                 }
                 Text(
                     text = stringResource(

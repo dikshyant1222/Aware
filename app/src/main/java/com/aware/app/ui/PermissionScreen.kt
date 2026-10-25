@@ -80,6 +80,7 @@ fun PermissionScreen(modifier: Modifier = Modifier) {
                 onTestHaptics = { navController.navigate("haptics") },
                 onSettings = { navController.navigate("settings") },
                 onCaptions = { navController.navigate("captions") { launchSingleTop = true } },
+                onDemo = { navController.navigate("demo") { launchSingleTop = true } },
             ) }
             composable("settings") { SettingsScreen(
                 onBack = { navController.popBackStack() },
@@ -88,6 +89,7 @@ fun PermissionScreen(modifier: Modifier = Modifier) {
             ) }
             composable("captions") { AslCaptionsScreen(onBack = { navController.popBackStack() }) }
             composable("haptics") { HapticTestScreen(onBack = { navController.popBackStack() }) }
+            composable("demo") { DemoScreen(onBack = { navController.popBackStack() }) }
         }
         return
     }

@@ -53,6 +53,16 @@ All dependency versions are in [gradle/libs.versions.toml](gradle/libs.versions.
 Listening continues in a foreground service until you stop it. Captions use the
 phone's speech recognizer; offline availability depends on the installed speech models.
 
+## Guided demo
+
+Tap **Try guided demo** on the home screen to preview doorbell, knock, siren,
+breaking-glass, baby-crying, and running-water alerts. Demo mode sends a
+deterministic classifier result through the normal smoothing, alert-card, and haptic
+pipeline, so it works offline without opening the microphone. It is intended to teach
+the interface and vibration patterns, not to measure YAMNet accuracy. Emergency demo
+events stay in the app and do not post an emergency notification or open the full-screen
+emergency activity. Stop live listening before starting a demo.
+
 On Windows, this command builds, installs, and opens the app on a connected,
 authorized phone or a running emulator:
 

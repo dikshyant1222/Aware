@@ -5,9 +5,8 @@ import com.google.mediapipe.tasks.audio.audioclassifier.AudioClassifier
 import com.google.mediapipe.tasks.audio.core.RunningMode
 import com.google.mediapipe.tasks.components.containers.AudioData
 import com.google.mediapipe.tasks.core.BaseOptions
-import java.io.Closeable
 
-class YamnetClassifier(context: Context) : Closeable {
+class YamnetClassifier(context: Context) : SoundClassifier {
     private val classifier: AudioClassifier = try {
         val options = AudioClassifier.AudioClassifierOptions.builder()
             .setBaseOptions(BaseOptions.builder().setModelAssetPath("yamnet.tflite").build())
@@ -25,7 +24,7 @@ class YamnetClassifier(context: Context) : Closeable {
 
     // Serialize native inference and cleanup, including ViewModel teardown during inference.
     @Synchronized
-    fun classify(samples: FloatArray, sampleRate: Int): List<Label> {
+    override fun classify(samples: FloatArray, sampleRate: Int): List<Label> {
         check(!closed) { "YAMNet classifier is closed." }
         require(samples.isNotEmpty()) { "An audio window must contain samples." }
         require(sampleRate > 0) { "Sample rate must be positive." }

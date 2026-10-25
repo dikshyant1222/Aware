@@ -21,7 +21,10 @@ import com.aware.app.haptics.HapticPlayer
 import com.aware.app.ui.EmergencyActivity
 import com.aware.app.ui.categoryColor
 
-class AlertReactor(context: Context) {
+class AlertReactor(
+    context: Context,
+    private val postExternalAlerts: Boolean = true,
+) {
     private val context = context.applicationContext
     private val haptics = HapticPlayer(this.context)
     private val messages = AlertMessages(this.context::getString)
@@ -30,6 +33,7 @@ class AlertReactor(context: Context) {
     fun react(detection: Detection) {
         if (!detection.isNew || !detection.type.alerts) return
         haptics.play(HapticEvent.from(detection.type))
+        if (!postExternalAlerts) return
         val emergency = detection.type.category == Category.EMERGENCY
         val message = messages.templateFor(detection)
         val intent = if (emergency) {

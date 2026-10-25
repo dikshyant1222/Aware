@@ -11,7 +11,7 @@ import com.aware.app.audio.AudioSource
 import com.aware.app.audio.rms
 import com.aware.app.audio.toDbfs
 import com.aware.app.classify.Label
-import com.aware.app.classify.YamnetClassifier
+import com.aware.app.classify.SoundClassifier
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -53,7 +53,7 @@ data class PipelineState(
 
 class AwarePipeline(
     private val audioSource: AudioSource,
-    private val classifier: YamnetClassifier,
+    private val classifier: SoundClassifier,
 ) {
     private val mutableState = MutableStateFlow(PipelineState())
     val state: StateFlow<PipelineState> = mutableState.asStateFlow()
