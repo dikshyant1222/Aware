@@ -9,8 +9,34 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.aware.app.speech.TranscriptEvent
 import com.aware.app.speech.TranscriptLine
+import com.aware.app.llm.Summary
+import com.aware.app.llm.LlmStatus
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 object ListeningRepository {
+    private val mutableSituation = MutableStateFlow<Summary?>(null)
+    val situation: StateFlow<Summary?> = mutableSituation.asStateFlow()
+    private val mutableSituationTime = MutableStateFlow(0L)
+    val situationTimeMs: StateFlow<Long> = mutableSituationTime.asStateFlow()
+    private val mutableLlmStatus = MutableStateFlow<LlmStatus>(LlmStatus.NOT_INSTALLED)
+    val llmStatus: StateFlow<LlmStatus> = mutableLlmStatus.asStateFlow()
+    // Retain a tap during classifier startup, before the service's controller subscribes.
+    private val requests = Channel<Unit>(Channel.CONFLATED)
+    internal val situationRequests = requests.receiveAsFlow()
+    private val modelUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    internal val modelChanges = modelUpdates.asSharedFlow()
+
+    fun requestSituation() { if (running.value) requests.trySend(Unit) }
+    fun modelChanged() { modelUpdates.tryEmit(Unit) }
+    internal fun updateLlmStatus(status: LlmStatus) { mutableLlmStatus.value = status }
+    internal fun publishSituation(summary: Summary, timeMs: Long) {
+        mutableSituationTime.value = timeMs
+        mutableSituation.value = summary
+    }
     private val mutableState = MutableStateFlow(PipelineState())
     val state: StateFlow<PipelineState> = mutableState.asStateFlow()
     private val mutableRunning = MutableStateFlow(false)
@@ -60,6 +86,9 @@ object ListeningRepository {
     }
     internal fun speechError(code: Int?) { mutableSpeechError.value = code }
     internal fun stopped() {
+        requests.tryReceive()
+        mutableSituation.value = null
+        mutableSituationTime.value = 0L
         mutableCaptions.value = false
         mutableSpeechError.value = null
         clearPartial()

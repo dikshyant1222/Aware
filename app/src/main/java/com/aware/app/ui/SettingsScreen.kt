@@ -127,6 +127,7 @@ fun SettingsScreen(onBack: () -> Unit, onTestHaptics: () -> Unit, onCaptions: ()
             if (downloadStatus != 0) Text(stringResource(downloadStatus))
             if (downloadStatus == R.string.model_downloading) LinearProgressIndicator(Modifier.fillMaxWidth())
             OfflineSpeechStatus()
+            SmartSummarySetting(settings.smartSummaries) { enabled -> scope.launch { repository.setSmartSummaries(enabled) } }
             FullScreenAlertSetting()
             TextButton(onClick = onTestHaptics, modifier = Modifier.heightIn(min = 64.dp)) { Text(stringResource(R.string.home_test_haptics)) }
         }

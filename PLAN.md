@@ -107,7 +107,14 @@ ListeningService (foreground, mic type) ── StateFlow ──► Compose UI
 - [x] Checks: 32/32 tests (26 + 6 NameDetector); strings 127/127 referenced names exist; 35 Kotlin files compile against the cached jars
 - ⚠️ Risk: some recognizers ignore `EXTRA_AUDIO_SOURCE` and open their own mic; `triggerModelDownload` may need user action. Verify on the phone
 - [ ] ✅ Verified on device
-### 7. On-device LLM with template fallback — ⬜
+### 7. On-device LLM with template fallback — 🟡 code done, awaiting device verification
+- [x] `SituationContext` JSON, `TemplateSummarizer` (≤ 15 words, combo rules), `OutputSanitizer`, all JVM-tested
+- [x] `MediaPipeLlmSummarizer`: model at filesDir/llm/model.task or /data/local/tmp/llm/model.task; 4 GB RAM gate; lazy load; 8 s timeout; unload after 2 min idle; any failure → template
+- [x] `SituationController`: 30 s buffer; auto trigger (HOME/PEOPLE/EMERGENCY alert within 10 s of speech, 20 s cooldown) + "What's happening?" button; template first, then LLM replaces it
+- [x] UI: Situation card + button on Home, summary on AlertCard, Settings switch/status/import model
+- [x] Checks: 61/61 tests (32 + 29 new), strings 145/145, 43 Kotlin files compile; LlmInference + LlmInferenceSession APIs checked with javap against tasks-genai 0.10.27
+- ⚠️ /data/local/tmp is often unreadable by apps on newer Android, so prefer **Import model file** in Settings
+- [ ] ✅ Verified on device (with and without a model)
 ### 8. Demo mode panel with bundled sounds — ⬜
 
 ---
@@ -135,3 +142,6 @@ ListeningService (foreground, mic type) ── StateFlow ──► Compose UI
 - 2026-10-25 — The first step 6 launch never ran: an apostrophe in the prompt broke the shell quoting. Relaunched directly via `codex-companion task --write --model gpt-6-astra --prompt-file` (07:52 UTC).
 - 2026-10-25 — Astra finished step 6 (~12 min). Claude re-ran the tests (32 pass) and string check (pass), and reviewed SharedAudioTranscriber (pipe + extras, main thread, backoff), NameDetector, and the MicTranscriber fallback/pause path.
 - 2026-10-25 — User switched the Codex model back to gpt-6.1-sol for the remaining steps.
+- 2026-10-25 — Pushed to GitHub (dikshyant1222/Aware). `main` and `android-native` now point to fed794d, the Android app committed on top of the old main history (fast-forward, no force push). The old Expo/Python main (a199221) is kept as `expo-prototype`. Teammate branches `pragoon_features` and `prashanta` are untouched (they're based on a199221). The local folder is now a git repo on `android-native`, tracking origin. gradlew isn't committed (Android Studio provides Gradle).
+- 2026-10-25 — Step 7 delegated to Codex gpt-6.1-sol via prompt file (08:23 UTC).
+- 2026-10-25 — Codex sol finished step 7 (~13 min). Claude re-ran the tests (61 pass) and string check (pass), and reviewed the LLM wrapper (timeout, mutex, idle unload, RAM gate, Throwable catch) and the template-first controller.
