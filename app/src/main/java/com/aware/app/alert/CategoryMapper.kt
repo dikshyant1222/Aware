@@ -45,17 +45,6 @@ object CategoryMapper {
         "Cat" to SoundType.CAT,
         "Meow" to SoundType.CAT,
         "Caterwaul" to SoundType.CAT,
-        "Livestock, farm animals, working animals" to SoundType.FARM_ANIMAL,
-        "Cattle, bovinae" to SoundType.FARM_ANIMAL,
-        "Moo" to SoundType.FARM_ANIMAL,
-        "Neigh, whinny" to SoundType.FARM_ANIMAL,
-        "Pig" to SoundType.FARM_ANIMAL,
-        "Oink" to SoundType.FARM_ANIMAL,
-        "Goat" to SoundType.FARM_ANIMAL,
-        "Sheep" to SoundType.FARM_ANIMAL,
-        "Bleat" to SoundType.FARM_ANIMAL,
-        "Chicken, rooster" to SoundType.FARM_ANIMAL,
-        "Crowing, cock-a-doodle-doo" to SoundType.FARM_ANIMAL,
         "Bird vocalization, bird call, bird song" to SoundType.BIRD,
         "Chirp, tweet" to SoundType.BIRD,
         "Squawk" to SoundType.BIRD,
@@ -84,14 +73,14 @@ object CategoryMapper {
         SoundType.GLASS_BREAK -> 1
         SoundType.SIREN, SoundType.SMOKE_ALARM, SoundType.SCREAM -> 2
         SoundType.KNOCK, SoundType.DOORBELL, SoundType.CAR_HORN, SoundType.BICYCLE_BELL -> 2
-        SoundType.BABY_CRY, SoundType.DOG_BARK, SoundType.CAT, SoundType.FARM_ANIMAL -> 2
+        SoundType.BABY_CRY, SoundType.DOG_BARK, SoundType.CAT -> 2
         else -> 3
     }
 
     // The recent windows a required hit may fall in. Crying and barking come in bursts with gaps,
     // so their hits needn't be back to back.
     fun windowSpan(type: SoundType): Int = when (type) {
-        SoundType.BABY_CRY, SoundType.DOG_BARK, SoundType.CAT, SoundType.FARM_ANIMAL -> requiredWindows(type) + 3
+        SoundType.BABY_CRY, SoundType.DOG_BARK, SoundType.CAT -> requiredWindows(type) + 3
         else -> requiredWindows(type) + 1
     }
 }

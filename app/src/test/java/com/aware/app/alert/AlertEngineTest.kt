@@ -90,10 +90,6 @@ class AlertEngineTest {
         val cat = instant()
         cat.process(meow, -40f, 0)
         assertEquals(SoundType.CAT, cat.process(meow, -40f, 500).single().type)
-        val moo = listOf(Label("Moo", 0.5f))
-        val farm = instant()
-        farm.process(moo, -40f, 0)
-        assertEquals(SoundType.FARM_ANIMAL, farm.process(moo, -40f, 500).single().type)
         val faint = listOf(Label("Chirp, tweet", 0.35f))
         val quiet = instant()
         repeat(4) { assertTrue(quiet.process(faint, -40f, it * 500L).isEmpty()) }

@@ -20,7 +20,7 @@ enum class HapticEvent(val soundType: SoundType?) {
     KNOCK(SoundType.KNOCK), PHONE_RING(SoundType.PHONE_RING),
     APPLIANCE_BEEP(SoundType.APPLIANCE_BEEP), WATER_RUNNING(SoundType.WATER_RUNNING),
     BABY_CRY(SoundType.BABY_CRY), SPEECH(SoundType.SPEECH),
-    DOG_BARK(SoundType.DOG_BARK), CAT(SoundType.CAT), FARM_ANIMAL(SoundType.FARM_ANIMAL),
+    DOG_BARK(SoundType.DOG_BARK), CAT(SoundType.CAT),
     BIRD(SoundType.BIRD), NAME_CALLED(null), URGENT(null);
 
     val category: Category get() = if (this == URGENT) Category.EMERGENCY else soundType?.category ?: Category.PEOPLE
@@ -51,7 +51,6 @@ fun patternFor(event: HapticEvent): HapticPattern = when (event) {
     HapticEvent.WATER_RUNNING -> HapticPattern(listOf(500, 350), listOf(65, 0))
     HapticEvent.DOG_BARK -> HapticPattern(listOf(70, 80, 110, 180, 70, 80, 110, 350), listOf(160, 0, 180, 0, 160, 0, 180, 0))
     HapticEvent.CAT -> HapticPattern(listOf(60, 90, 60, 350), listOf(120, 0, 120, 0))
-    HapticEvent.FARM_ANIMAL -> HapticPattern(listOf(300, 150, 300, 350), listOf(130, 0, 90, 0))
     HapticEvent.BIRD -> HapticPattern(listOf(40, 60, 40, 60, 40, 350), listOf(70, 0, 70, 0, 70, 0))
     HapticEvent.NAME_CALLED -> HapticPattern(listOf(50, 80, 50, 80, 50, 350), listOf(80, 0, 80, 0, 80, 0))
     HapticEvent.URGENT -> HapticPattern(

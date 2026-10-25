@@ -6,7 +6,6 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.AudioEffect
-import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
 import androidx.annotation.RequiresPermission
 import kotlinx.coroutines.Dispatchers
@@ -32,9 +31,9 @@ class MicAudioSource : AudioSource {
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     override fun windows(): Flow<FloatArray> = flow {
         val recorder = createRecorder()
-        val effects = disableProcessing(recorder)
-        // Speech recognition still gets a usable level from the unprocessed source.
-        val speechGain = AutoGain(release = 0.05f)
+        // Noise suppression and echo cancellation treat steady tonal sounds, such as sirens and
+        // smoke alarms, as noise. The phone's own gain control is left alone.
+        val effects = disableNoiseReduction(recorder)
         try {
             recorder.startRecording()
             check(recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
@@ -52,7 +51,7 @@ class MicAudioSource : AudioSource {
                     delay(10)
                     continue
                 }
-                mutablePcm.tryEmit(boosted(pcm, count, speechGain))
+                mutablePcm.tryEmit(pcm.copyOf(count))
                 for (index in 0 until count) {
                     window[filled++] = pcm[index] / 32_768f
                     if (filled == WINDOW_SIZE) {
@@ -87,12 +86,7 @@ class MicAudioSource : AudioSource {
         check(minimumBytes > 0) { "16 kHz mono microphone capture is unavailable." }
         val bufferBytes = maxOf(minimumBytes, WINDOW_SIZE * 2)
         var failure: Exception? = null
-        // The phone's MIC path often applies noise suppression and gain control, which treat steady tonal
-        // sounds such as sirens and smoke alarms as noise. Prefer the least processed source available.
-        for (source in intArrayOf(
-            MediaRecorder.AudioSource.UNPROCESSED, MediaRecorder.AudioSource.VOICE_RECOGNITION,
-            MediaRecorder.AudioSource.MIC, MediaRecorder.AudioSource.DEFAULT,
-        )) {
+        for (source in intArrayOf(MediaRecorder.AudioSource.MIC, MediaRecorder.AudioSource.DEFAULT)) {
             var recorder: AudioRecord? = null
             try {
                 recorder = AudioRecord(
@@ -114,19 +108,11 @@ class MicAudioSource : AudioSource {
         throw IllegalStateException("Could not initialize the microphone (MIC or DEFAULT).", failure)
     }
 
-    /** Switch off any noise suppression, gain control and echo cancellation the device attached. */
-    private fun disableProcessing(recorder: AudioRecord): List<AudioEffect> = buildList {
+    /** Switches off the device's noise suppression and echo cancellation, returning them so they can be released. */
+    private fun disableNoiseReduction(recorder: AudioRecord): List<AudioEffect> = buildList {
         val session = recorder.audioSessionId
         runCatching { if (NoiseSuppressor.isAvailable()) NoiseSuppressor.create(session)?.also { it.enabled = false }?.let(::add) }
-        runCatching { if (AutomaticGainControl.isAvailable()) AutomaticGainControl.create(session)?.also { it.enabled = false }?.let(::add) }
         runCatching { if (AcousticEchoCanceler.isAvailable()) AcousticEchoCanceler.create(session)?.also { it.enabled = false }?.let(::add) }
-    }
-
-    private fun boosted(pcm: ShortArray, count: Int, gain: AutoGain): ShortArray {
-        val floats = FloatArray(count) { pcm[it] / 32_768f }
-        val lifted = gain.apply(floats)
-        if (lifted === floats) return pcm.copyOf(count)
-        return ShortArray(count) { (lifted[it] * 32_767f).toInt().toShort() }
     }
 
     private companion object {

@@ -36,7 +36,6 @@
     <string name="sound_speech">Speech</string>
     <string name="sound_dog_bark">Dog barking</string>
     <string name="sound_cat">Cat meowing</string>
-    <string name="sound_farm_animal">Farm animal</string>
     <string name="sound_bird">Bird</string>
     <string name="permission_title">Welcome to Aware</string>
     <string name="permission_microphone_explanation">Aware needs microphone access to recognize nearby sounds. Sound alerts stay on your device. Speech recognition prefers offline models; captions and name detection may use the network when offline speech is unavailable.</string>
@@ -65,7 +64,6 @@
     <string name="alert_speech">Someone is speaking nearby.</string>
     <string name="alert_dog_bark">Dog barking %1$s.</string>
     <string name="alert_cat">Cat meowing %1$s.</string>
-    <string name="alert_farm_animal">Farm animal sounds %1$s.</string>
     <string name="alert_bird">Bird calling %1$s.</string>
     <string name="emergency_dismiss">I\'M SAFE — DISMISS</string>
     <string name="emergency_timed_out">Vibration stopped after 30 seconds.</string>
@@ -85,7 +83,6 @@
     <string name="pattern_water">One long, soft hum</string>
     <string name="pattern_dog">Short, choppy pulses</string>
     <string name="pattern_cat">Soft double tap</string>
-    <string name="pattern_farm_animal">Two long, low pulses</string>
     <string name="pattern_bird">Light, quick trill</string>
     <string name="pattern_name">Three quick, light taps</string>
     <string name="pattern_silent">No vibration</string>

@@ -87,7 +87,6 @@ private fun patternDescription(event: HapticEvent): Int = when (event) {
     HapticEvent.WATER_RUNNING -> R.string.pattern_water
     HapticEvent.DOG_BARK -> R.string.pattern_dog
     HapticEvent.CAT -> R.string.pattern_cat
-    HapticEvent.FARM_ANIMAL -> R.string.pattern_farm_animal
     HapticEvent.BIRD -> R.string.pattern_bird
     HapticEvent.NAME_CALLED -> R.string.pattern_name
     HapticEvent.SPEECH -> R.string.pattern_silent

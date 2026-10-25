@@ -83,6 +83,13 @@ class ListeningService : LifecycleService() {
                     setReferenceCounted(false)
                     acquire(4 * 60 * 60 * 1_000L)
                 }
+            // The lock has a timeout as a safety net, so renew it for as long as listening continues.
+            lifecycleScope.launch {
+                while (true) {
+                    kotlinx.coroutines.delay(3 * 60 * 60 * 1_000L)
+                    wakeLock?.acquire(4 * 60 * 60 * 1_000L)
+                }
+            }
             sessionJob = lifecycleScope.launch {
                 // Keep the temporary model even if cancellation wins the dispatch back to Main.
                 var loadedModel: YamnetClassifier? = null

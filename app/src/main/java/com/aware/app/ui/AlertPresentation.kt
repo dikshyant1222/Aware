@@ -126,7 +126,7 @@ fun soundIcon(type: SoundType): ImageVector = when (type) {
     SoundType.APPLIANCE_BEEP -> Icons.Default.Kitchen
     SoundType.WATER_RUNNING -> Icons.Default.WaterDrop
     SoundType.BABY_CRY -> Icons.Default.ChildCare
-    SoundType.DOG_BARK, SoundType.CAT, SoundType.FARM_ANIMAL -> Icons.Default.Pets
+    SoundType.DOG_BARK, SoundType.CAT -> Icons.Default.Pets
     SoundType.BIRD -> Icons.Default.Park
 }
 
@@ -148,6 +148,5 @@ fun soundName(type: SoundType): String = stringResource(when (type) {
     SoundType.SPEECH -> R.string.sound_speech
     SoundType.DOG_BARK -> R.string.sound_dog_bark
     SoundType.CAT -> R.string.sound_cat
-    SoundType.FARM_ANIMAL -> R.string.sound_farm_animal
     SoundType.BIRD -> R.string.sound_bird
 })

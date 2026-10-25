@@ -8,7 +8,6 @@ import com.aware.app.alert.SoundType
 import com.aware.app.alert.Trend
 import android.util.Log
 import com.aware.app.audio.AudioSource
-import com.aware.app.audio.AutoGain
 import com.aware.app.audio.rms
 import com.aware.app.audio.toDbfs
 import com.aware.app.classify.Label
@@ -20,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -90,11 +90,14 @@ class AwarePipeline(
             try {
                 // A cancelled source must finish releasing its recorder before a restart.
                 previous?.join()
-                // The level and trend stay raw; only the classifier hears the gain-lifted audio.
-                val gain = AutoGain()
-                audioSource.windows().collect { samples ->
+                var failures = 0
+                var silentWindows = 0
+                val handle: suspend (FloatArray) -> Unit = handle@{ samples ->
+                    failures = 0
                     val level = toDbfs(rms(samples))
-                    val labels = classifier.classify(gain.apply(samples), audioSource.sampleRate)
+                    // Android hands back exact silence when the microphone is blocked or taken by another app.
+                    silentWindows = if (level <= SILENT_DB) silentWindows + 1 else 0
+                    val labels = classifier.classify(samples, audioSource.sampleRate)
                     currentCoroutineContext().ensureActive()
                     synchronized(this@AwarePipeline) {
                         if (job === session && session?.isActive == true) {
@@ -149,8 +152,31 @@ class AwarePipeline(
                                 latestAlert = latestAlert,
                                 feed = (additions + previousState.feed).take(FEED_LIMIT),
                                 latestNameAlertMs = previousState.latestNameAlertMs,
+                                error = if (silentWindows >= SILENT_WINDOWS) MIC_SILENT else null,
                             )
                         }
+                    }
+                }
+                // A capture failure (another app took the microphone, a headset switch) retries with backoff
+                // instead of leaving the app deaf until the user notices and restarts it.
+                while (true) {
+                    try {
+                        audioSource.windows().collect(handle)
+                        break
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        Log.w(TAG, "Audio capture failed; retrying", error)
+                        synchronized(this@AwarePipeline) {
+                            if (job === session && session?.isActive == true) {
+                                mutableState.update {
+                                    it.copy(listening = false, labels = emptyList(), levelDb = -90f,
+                                        error = error.message ?: "Audio capture or classification failed.")
+                                }
+                            }
+                        }
+                        delay((1_000L shl failures.coerceAtMost(4)).coerceAtMost(15_000L))
+                        failures++
                     }
                 }
             } catch (error: CancellationException) {
@@ -221,5 +247,8 @@ class AwarePipeline(
         const val SPEECH_FEED_INTERVAL_MS = 3_000L
         const val ALERT_HOLD_MS = 3_000L
         const val TAG = "Aware"
+        const val SILENT_DB = -89f
+        const val SILENT_WINDOWS = 20 // about ten seconds of exact silence
+        const val MIC_SILENT = "The microphone is returning silence. Another app may be using it, or access is blocked."
     }
 }
