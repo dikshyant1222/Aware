@@ -11,6 +11,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val state = ListeningRepository.state
     val running = ListeningRepository.running
     val transcript = ListeningRepository.transcript
+    val situation = ListeningRepository.situation
+    val situationTimeMs = ListeningRepository.situationTimeMs
+    fun requestSituation() = ListeningRepository.requestSituation()
     private val haptics = HapticPlayer(application)
 
     fun toggleListening() {

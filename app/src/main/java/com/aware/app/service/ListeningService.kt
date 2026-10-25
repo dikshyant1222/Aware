@@ -22,6 +22,7 @@ import com.aware.app.audio.MicAudioSource
 import com.aware.app.classify.YamnetClassifier
 import com.aware.app.data.settingsRepository
 import com.aware.app.speech.SpeechController
+import com.aware.app.llm.SituationController
 import kotlinx.coroutines.flow.first
 import java.util.Date
 import kotlinx.coroutines.CancellationException
@@ -44,6 +45,7 @@ class ListeningService : LifecycleService() {
     private var pipeline: AwarePipeline? = null
     private var reactor: AlertReactor? = null
     private var speech: SpeechController? = null
+    private var situation: SituationController? = null
     private var sessionJob: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var running = false
@@ -104,6 +106,8 @@ class ListeningService : LifecycleService() {
                         launch(start = CoroutineStart.UNDISPATCHED) {
                             activePipeline.alerts.collect(activeReactor::react)
                         }
+                        val situationController = SituationController(this@ListeningService, activePipeline, this, initialSettings.smartSummaries)
+                        situation = situationController
                         activePipeline.start(this)
                         val controller = SpeechController(this@ListeningService, activePipeline, audio, this) { time ->
                             activePipeline.recordName(time)
@@ -116,6 +120,7 @@ class ListeningService : LifecycleService() {
                                 activePipeline.setSensitivity(settings.sensitivity)
                                 activePipeline.setEnabledCategories(settings.enabledCategories)
                                 controller.applySettings(settings)
+                                situationController.setEnabled(settings.smartSummaries)
                             }
                         }
                         launch {
@@ -189,6 +194,8 @@ class ListeningService : LifecycleService() {
                 if (failure == null) failure = cleanupError.message ?: getString(R.string.listening_start_error)
             }
         }
+        cleanUp { situation?.close() }
+        situation = null
         cleanUp { speech?.release() }
         speech = null
         ListeningRepository.stopped()

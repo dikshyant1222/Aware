@@ -1,9 +1,8 @@
 # Aware
 
-Native Android sound awareness for Deaf and hard-of-hearing users. Step 1 contains
-only project setup, an always-dark accessible theme, runtime permissions, and a
-home placeholder. No audio is captured, no model is loaded, and no service is
-started. See [PLAN.md](PLAN.md) for the architecture and later steps.
+Native Android sound awareness for Deaf and hard-of-hearing users: background
+sound alerts, haptics, captions, and optional on-device situation summaries.
+See [PLAN.md](PLAN.md) for the architecture and later steps.
 
 ## Prerequisites
 
@@ -37,7 +36,7 @@ All dependency versions are in [gradle/libs.versions.toml](gradle/libs.versions.
 
    Both scripts create `app/src/main/assets/`, download `yamnet.tflite`, and skip
    an existing file. Paths are relative to the script, so other working directories
-   also work. Model files are ignored by Git. The skeleton itself runs without a model.
+   also work. Model files are ignored by Git. The optional LLM is installed separately below.
 
 2. Open this directory in Android Studio. Install the SDK packages above and
    select JDK 17 as the Gradle JDK.
@@ -53,37 +52,55 @@ All dependency versions are in [gradle/libs.versions.toml](gradle/libs.versions.
 
 3. Sync Gradle, connect your device, select the `app` configuration, and run.
 4. Tap **Grant permissions**. Allow microphone access and, on Android 13+,
-   notifications. The home screen shows **Aware** and
-   **Ready — listening starts in step 2**. After denial, **Open app settings**
+   notifications. Tap **Start listening** to recognize nearby sounds.
+   After denial, **Open app settings**
    lets you enable the permissions; returning to the app refreshes the screen.
 
-The declared `ListeningService` is a stub that stops itself if started. Foreground
-listening belongs to step 5. Audio, classification, haptics, speech, and LLM logic
-are deliberately left for later steps. Package directories follow PLAN.md;
-unused packages contain no placeholder source files.
+Listening continues in a foreground service until you stop it. Captions use the
+phone's speech recognizer; offline availability depends on the installed speech models.
 
-## Optional LLM model (for step 7)
+## Optional on-device LLM
 
-The app must work without an LLM model. Step 1 does not copy or read one.
+Everything works without an LLM model. **What's happening?** immediately shows a
+deterministic quick summary of the last 30 seconds. Related sound alerts and final
+speech can also trigger a summary, at most once every 20 seconds. With **Smart
+summaries (on-device AI)** enabled and a compatible model installed, an on-device
+sentence can replace the template. Alerts and haptics never wait for the LLM.
 
-1. Download a **MediaPipe-compatible Gemma approximately 1B int4 `.task`** model
-   from Kaggle or Hugging Face, for example the
+1. Download a **Gemma 3 1B int4 `.task`** model, for example from the
    [litert-community/Gemma3-1B-IT repository](https://huggingface.co/litert-community/Gemma3-1B-IT).
    Accept the model's license/access terms if required. Choose a `.task` variant
    intended for Android MediaPipe LLM Inference; model formats such as `.litertlm`
    are not interchangeable. Consult the
    [MediaPipe Android guide](https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android)
    for compatible variants. Rename the downloaded file to `model.task`.
-2. With the device connected, run from the model's directory:
+2. In **Settings → Import model file (.task)**, choose the download. The file must
+   have a `.task` extension and be larger than 50 MB. Import shows progress when
+   the document provider reports its size (otherwise 0% until completion), writes
+   a temporary file, and atomically installs it as `filesDir/llm/model.task`.
+   **Remove model** deletes the preferred installed file. An adb-owned file may
+   require removing it through adb instead.
+3. Alternatively, with the device connected, run from the model's directory:
 
    ```text
    adb shell mkdir -p /data/local/tmp/llm
    adb push model.task /data/local/tmp/llm/model.task
+   adb shell chmod 644 /data/local/tmp/llm/model.task
    ```
 
-3. Step 7 will implement copying/reading from that staging path, accounting for
-   device file permissions, and retain a template fallback when the model is
-   absent or unavailable. No LLM model is bundled or committed.
+   The imported private file takes priority; the adb path is used only when
+   readable by the app. Android permissions/SELinux can prevent reading that path;
+   use Settings import in that case. Remove an adb-installed model with
+   `adb shell rm /data/local/tmp/llm/model.task`.
+
+The LLM requires at least 4 GB total RAM and a device that Android does not mark
+as low-RAM. Settings shows installation/loading/readiness/failure status. Loading
+is lazy, each call has an eight-second result deadline, and an idle model unloads
+after two minutes. Blocking native work may finish after that deadline; its result
+is discarded and cleanup waits for native work to finish safely. Disabling smart
+summaries keeps quick summaries available. Model compatibility, speed, and memory
+use still need verification on the target phone; extension and size validation
+cannot prove that a particular download is compatible. No LLM model is bundled.
 
 ## Verification status
 

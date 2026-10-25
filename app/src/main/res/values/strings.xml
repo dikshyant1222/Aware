@@ -128,4 +128,22 @@
     <string name="captions_stop">Stop captions</string>
     <string name="captions_clear">Clear</string>
     <string name="captions_waiting">Waiting for speech…</string>
+    <string name="situation_request">What\'s happening?</string>
+    <string name="situation_title">Situation</string>
+    <string name="situation_ai">On-device AI</string>
+    <string name="situation_template">Quick summary</string>
+    <string name="llm_setting">Smart summaries (on-device AI)</string>
+    <string name="llm_not_installed">Model not installed</string>
+    <string name="llm_unsupported">Not supported on this phone (needs 4 GB RAM)</string>
+    <string name="llm_idle">Model installed. Loads when needed.</string>
+    <string name="llm_loading">Loading…</string>
+    <string name="llm_ready">Ready</string>
+    <string name="llm_disabled">Smart summaries disabled</string>
+    <string name="llm_failed">Failed: %1$s</string>
+    <string name="llm_import">Import model file (.task)</string>
+    <string name="llm_remove">Remove model</string>
+    <string name="llm_import_progress">Importing model: %1$d%%</string>
+    <string name="llm_import_failed">Could not import model</string>
+    <string name="llm_remove_failed">Could not remove model</string>
+    <string name="llm_help">Download a Gemma 3 1B int4 .task model (litert-community on Hugging Face), then import it here or adb push it to /data/local/tmp/llm/model.task.</string>
 </resources>

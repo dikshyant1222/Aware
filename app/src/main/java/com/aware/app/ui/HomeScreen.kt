@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aware.app.R
 import com.aware.app.alert.Category
 import com.aware.app.alert.SoundType
+import com.aware.app.llm.Source
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -62,6 +64,8 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val running by viewModel.running.collectAsStateWithLifecycle()
     val transcript by viewModel.transcript.collectAsStateWithLifecycle()
+    val situation by viewModel.situation.collectAsStateWithLifecycle()
+    val situationTime by viewModel.situationTimeMs.collectAsStateWithLifecycle()
     var showDebug by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val nowMs by produceState(System.currentTimeMillis(), running, lifecycleOwner) {
@@ -129,6 +133,14 @@ fun HomeScreen(
                         ),
                     )
                 }
+                Button(
+                    onClick = viewModel::requestSituation,
+                    enabled = running,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
+                    Text(stringResource(R.string.situation_request), style = MaterialTheme.typography.titleLarge)
+                }
                 state.error?.let { error ->
                     Text(
                         text = stringResource(R.string.home_error, error),
@@ -178,6 +190,20 @@ fun HomeScreen(
                         }
                     }
                 }
+                situation?.let { summary ->
+                    Card(Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(stringResource(R.string.situation_title), style = MaterialTheme.typography.headlineMedium)
+                            Text(summary.text, style = MaterialTheme.typography.titleLarge)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                if (summary.source == Source.LLM) Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                                Text(stringResource(if (summary.source == Source.LLM) R.string.situation_ai else R.string.situation_template),
+                                    style = MaterialTheme.typography.labelSmall)
+                                Text(timeAgo(situationTime, nowMs), style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
                 Text(stringResource(R.string.home_latest_alert), style = MaterialTheme.typography.headlineMedium)
                 val alert = state.latestAlert
                 val nameTime = state.latestNameAlertMs
@@ -194,7 +220,8 @@ fun HomeScreen(
                 } else if (alert == null) {
                     Text(stringResource(R.string.home_no_alert), style = MaterialTheme.typography.bodyLarge)
                 } else {
-                    AlertCard(alert, nowMs, onReplay = { viewModel.replayAlert(alert.type) })
+                    AlertCard(alert, nowMs, onReplay = { viewModel.replayAlert(alert.type) },
+                        situation = situation, situationTimeMs = situationTime)
                 }
                 Text(stringResource(R.string.home_feed_title), style = MaterialTheme.typography.headlineMedium)
             }

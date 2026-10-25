@@ -15,6 +15,7 @@ data class Settings(
     val sensitivity: Float = 0.5f,
     val translationTarget: String? = null,
     val nameDetection: Boolean = true,
+    val smartSummaries: Boolean = true,
 )
 
 private val Context.settingsStore by preferencesDataStore("settings")
@@ -34,6 +35,7 @@ class SettingsRepository private constructor(context: Context) {
             sensitivity = (values[SENSITIVITY] ?: 0.5f).let { if (it.isFinite()) it.coerceIn(0f, 1f) else 0.5f },
             translationTarget = values[TARGET],
             nameDetection = values[DETECT] ?: true,
+            smartSummaries = values[SMART_SUMMARIES] ?: true,
         )
     }
 
@@ -53,6 +55,7 @@ class SettingsRepository private constructor(context: Context) {
         if (code == null) it.remove(TARGET) else it[TARGET] = code
     }.let { Unit }
     suspend fun setNameDetection(enabled: Boolean) = store.edit { it[DETECT] = enabled }.let { Unit }
+    suspend fun setSmartSummaries(enabled: Boolean) = store.edit { it[SMART_SUMMARIES] = enabled }.let { Unit }
 
     companion object {
         private val CATEGORIES = stringSetPreferencesKey("categories")
@@ -60,6 +63,7 @@ class SettingsRepository private constructor(context: Context) {
         private val SENSITIVITY = floatPreferencesKey("sensitivity")
         private val TARGET = stringPreferencesKey("translation_target")
         private val DETECT = booleanPreferencesKey("name_detection")
+        private val SMART_SUMMARIES = booleanPreferencesKey("smart_summaries")
         @Volatile private var instance: SettingsRepository? = null
         internal fun get(context: Context): SettingsRepository = instance ?: synchronized(this) {
             instance ?: SettingsRepository(context).also { instance = it }

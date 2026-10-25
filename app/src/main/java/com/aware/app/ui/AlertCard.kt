@@ -33,9 +33,12 @@ import com.aware.app.alert.AlertMessages
 import com.aware.app.alert.Detection
 import com.aware.app.ui.theme.AwareSurface
 import kotlin.math.roundToInt
+import com.aware.app.llm.Summary
+import kotlin.math.abs
 
 @Composable
-fun AlertCard(detection: Detection, nowMs: Long, onReplay: () -> Unit, modifier: Modifier = Modifier) {
+fun AlertCard(detection: Detection, nowMs: Long, onReplay: () -> Unit, modifier: Modifier = Modifier,
+    situation: Summary? = null, situationTimeMs: Long = 0L) {
     val context = LocalContext.current
     val messages = remember(context) { AlertMessages(context::getString) }
     Card(
@@ -50,6 +53,9 @@ fun AlertCard(detection: Detection, nowMs: Long, onReplay: () -> Unit, modifier:
                 CategoryIcon(detection.type.category, Modifier.size(56.dp))
                 Text(soundName(detection.type), style = MaterialTheme.typography.headlineLarge)
                 Text(messages.templateFor(detection), style = MaterialTheme.typography.titleLarge)
+                if (situation != null && abs(situationTimeMs - detection.timeMs) <= 15_000L) {
+                    Text(situation.text, style = MaterialTheme.typography.titleMedium)
+                }
                 Surface(color = Color(0xFF252A30), contentColor = Color.White, shape = RoundedCornerShape(12.dp)) {
                     Text(trendText(detection.trend), Modifier.padding(12.dp), style = MaterialTheme.typography.bodyLarge)
                 }
