@@ -88,6 +88,10 @@ while text captions remain usable.
 
 Signing follows recognition with a short stability delay (up to 800 ms for an
 unchanging partial word). Live clips use shorter holds than the studio preview.
+Playback targets 60 fps and blends the final solved arm, wrist, and finger poses
+over 180 ms at each word boundary. Queued words keep the hands in signing space
+instead of lowering and lifting them between clips. The next clip and handshapes
+are prepared ahead of the handoff and cached; finger transitions use eased motion.
 This is experimental English sign animation and fingerspelling,
 not validated ASL translation; translated captions are displayed as text. Long
 utterances and fingerspelling can accumulate a playback backlog.
@@ -138,31 +142,35 @@ cannot prove that a particular download is compatible. No LLM model is bundled.
 ## Verification status
 
 Verified on October 25, 2026: debug APK builds, all 67 JVM unit tests pass, and
-Android lint passes with warnings. Seven JavaScript tests cover caption queueing,
-deduplication, cancellation, pause/resume, and compilation of real caption clips:
+Android lint passes with warnings. Twelve JavaScript tests cover caption queueing,
+deduplication, cancellation, pause/resume, clip compilation, and pose continuity:
 
 ```powershell
-node --experimental-default-type=module --test scripts/test_avatar_sync.mjs
+node --experimental-default-type=module --test scripts/test_avatar_sync.mjs scripts/test_avatar_transitions.mjs
 ```
 
 `node scripts/smoke_avatar.mjs` also passes against the bundled avatar in headless
 Chrome: local modules/model/textures load, ordered clips play, start/completion
-bridge callbacks match captions, and Clear cancels pending playback. It uses a
+bridge callbacks match captions, rendered word handoffs stay continuous, and
+Clear cancels pending playback. It uses a
 temporary Chrome profile under `app/build/avatar-smoke/`; `CHROME_PATH` overrides
 the executable location. Android WebView was also checked on the connected
 Samsung phone. This found and fixed a zero-height canvas caused by loading before
 Compose layout. The app now loads the WebView after measurement and sizes the
 canvas from its visual viewport. The single captions button, plain caption
-surface, and visible signer were checked on the phone. Continuous recognition
-and device performance have not been benchmarked; signing remains experimental.
+surface, and visible signer were checked on the phone. The short mixed-motion
+sequence measures about 60 fps (16.7 ms median and 95th-percentile rendered frame
+intervals on the test phone). Long-session recognition and thermal behavior have
+not been benchmarked; signing remains experimental.
 
-Three connected Android tests exercise the production caption-to-avatar path on
+Four connected Android tests exercise the production caption-to-avatar path on
 the phone: a partial word causes visible mesh motion (verified by changed avatar
 pixels and joint movement), finalized text does not replay signed words, and
 continued speech maps to the correct native caption highlight. Generated speech
 audio is also passed through Android's actual recognizer into the caption stream
 and signer, including a finalized segmented result. No user recording is needed
-for this test.
+for this test. A mixed sign/fingerspelling sequence also checks rendered joint
+continuity at word boundaries, frame cadence, and preparation of the next clip.
 
 ```powershell
 .\gradlew.bat :app:connectedDebugAndroidTest

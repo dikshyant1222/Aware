@@ -53,15 +53,18 @@ import {HandRig} from './hand-rig.js';
 import * as T from 'three';
 import * as R from './vendor/animation-retarget.js';
 import {CaptionPlayback} from './caption-playback.js';
+import {PoseTransition} from './pose-transition.js';
 
 const $=id=>document.getElementById(id);
 let avatar,mixer,action,clip,marks=[],index=0,playing=false,ready=false;
 let rest,bones,armMotion,handRig,renderer,height=1.8,avatarWidth=1.2,dirty=true;
 let cues=[],poseCache=new Map(),stopAt=null;
-let restPose=[];
+let restPose=[],transition,freshClip=false,preparationJob=null;
+const clipCache=new Map();
+const transitionMetrics={prepared:0,cacheHits:0,seamCacheHits:0,starts:0,maxPrepareMs:0};
 const notify=(method,...args)=>{try{window.AwareBridge?.[method](...args)}catch(e){}};
 const playback=new CaptionPlayback({
-  play:entry=>doAnimate(entry.text),
+  play:entry=>doAnimate(entry),
   stop:resetPose,
   onStart:entry=>notify('onSigningStarted',entry.id,String(entry.lineId||entry.id),entry.start||0,entry.end??entry.text.length),
   onComplete:entry=>notify('onSigningComplete',entry.id),
@@ -110,42 +113,80 @@ function resize(){
 
 function setCamera(){
   dirty=true;
-  // Fit the upper body and full arm span, including hands, on narrow phones.
-  const visibleHeight=Math.max(height*.74,avatarWidth*1.08/camera.aspect);
+  // Frame the signer from head to hips, allowing room for the signing space.
+  const visibleHeight=Math.max(height*.58,avatarWidth*.80/camera.aspect);
   const d=visibleHeight/(2*Math.tan(camera.fov*Math.PI/360));
   camera.position.set(center.x,center.y+.015,center.z+d);
   camera.lookAt(center);
 }
 
-function doAnimate(text){
+function prepareClip(text){
+  const key=text.trim().toUpperCase();
+  if(clipCache.has(key)){
+    const plan=clipCache.get(key);clipCache.delete(key);clipCache.set(key,plan);
+    transitionMetrics.cacheHits++;
+    return plan;
+  }
+  const started=performance.now();
+  const compiled=compileMessage(text,false,{live:true,continuous:true});
+  if(!compiled.marks.length)throw new Error('No supported English letters or signs in caption');
+  const source=T.AnimationClip.parse(compiled.clip);
+  const result=R.retargetClipToObject(source,avatar,rest);
+  if(!result.clip)throw new Error('Could not retarget signing clip');
+  const cache=new Map();
+  for(const cue of compiled.cues)for(const side of ['Right','Left']){
+    const key=side==='Right'?'right':'left',previous=side==='Right'?'previousRight':'previousLeft';
+    for(const shape of [cue[key],cue[previous]]){
+      const id=side+shape;if(!cache.has(id))cache.set(id,handRig.pose(shape,side));
+    }
+  }
+  const plan={source,clip:result.clip,marks:compiled.marks,cues:compiled.cues,cache};
+  clipCache.set(key,plan);
+  if(clipCache.size>24)clipCache.delete(clipCache.keys().next().value);
+  transitionMetrics.prepared++;
+  transitionMetrics.maxPrepareMs=Math.max(transitionMetrics.maxPrepareMs,performance.now()-started);
+  return plan;
+}
+
+function prepareNext(){
+  if(preparationJob!==null||!playback.pending.length)return;
+  const job=()=>{
+    preparationJob=null;
+    const next=playback.pending[0];
+    if(next&&ready){try{prepareClip(next.text)}catch(error){console.error('Prepare sign:',error)}}
+  };
+  preparationJob=window.requestIdleCallback?requestIdleCallback(job,{timeout:100}):setTimeout(job,0);
+}
+
+function doAnimate(entry){
   if(!ready)throw new Error('Avatar is not ready');
-  poseCache=new Map();
+  if(transitionMetrics.starts&&clipCache.has(entry.text.trim().toUpperCase()))transitionMetrics.seamCacheHits++;
+  const plan=prepareClip(entry.text);
+  // Capture the last displayed solution before stop() restores mixer bindings.
+  transition.begin();
   if(action){action.stop();mixer.uncacheClip(clip)}
-    const compiled=compileMessage(text,false,{live:true});
-    if(!compiled.marks.length)throw new Error('No supported English letters or signs in caption');
-    marks=compiled.marks;cues=compiled.cues;
-    const sourceClip=T.AnimationClip.parse(compiled.clip);
-    armMotion.setClip(sourceClip);
-    const result=R.retargetClipToObject(sourceClip,avatar,rest);
-    if(!result.clip)throw new Error('Could not retarget signing clip');
-    clip=result.clip;
-    action=mixer.clipAction(clip);
-    action.setLoop(T.LoopOnce);
-    action.clampWhenFinished=true;
-    action.reset().play();
-    index=0;
-    playing=true;
-    updateBadge();
-    $('idle-indicator').classList.add('active');
+  marks=plan.marks;cues=plan.cues;poseCache=plan.cache;
+  armMotion.setClip(plan.source);
+  clip=plan.clip;
+  action=mixer.clipAction(clip);
+  action.setLoop(T.LoopOnce);
+  action.clampWhenFinished=true;
+  action.reset().play();
+  index=0;playing=true;freshClip=true;
+  transitionMetrics.starts++;
+  updateBadge();
+  $('idle-indicator').classList.add('active');
+  prepareNext();
 }
 
 function resetPose(){
   playing=false;
   if(action){action.stop();mixer.uncacheClip(clip)}
-  action=null;clip=null;marks=[];cues=[];poseCache.clear();
+  action=null;clip=null;marks=[];cues=[];poseCache=new Map();
   for(const [bone,position,quaternion,scale] of restPose){
     bone.position.copy(position);bone.quaternion.copy(quaternion);bone.scale.copy(scale);
   }
+  transition?.reset();
   $('badge').classList.add('hidden');
   $('idle-indicator').classList.remove('active');
   dirty=true;
@@ -159,14 +200,21 @@ function updateBadge(){
 }
 
 // ---- Public API for Android WebView bridge ----
-window.enqueueCaptions=entries=>playback.enqueue(entries);
-window.clearSigns=()=>playback.reset();
+window.enqueueCaptions=entries=>{playback.enqueue(entries);prepareNext()};
+window.clearSigns=()=>{
+  if(preparationJob!==null){
+    if(window.cancelIdleCallback)cancelIdleCallback(preparationJob);else clearTimeout(preparationJob);
+    preparationJob=null;
+  }
+  playback.reset();
+};
 window.setPlaybackPaused=paused=>playback.setPaused(paused);
 window.isReady=function(){return ready};
 window.resizeAvatar=resize;
 window.avatarDiagnostics=()=>({
   ready,paused:playback.paused,playing,
   stats:playback.stats,
+  transition:{...transitionMetrics,active:transition?.active||false,elapsed:transition?.elapsed||0},
   currentId:playback.current?.id||null,
   lineId:playback.current?.lineId||null,
   range:playback.current?[playback.current.start,playback.current.end]:null,
@@ -174,6 +222,7 @@ window.avatarDiagnostics=()=>({
   time:action?.time||0,
   duration:clip?.duration||0,
   joints:bones?['RightArm','RightForeArm','RightHand','RightHandIndex1'].map(n=>bones.get(n)?.quaternion.toArray()):[],
+  renderedJoints:bones?['RightArm','RightForeArm','RightHand','RightHandIndex1'].map(n=>transition.renderedRotation(bones.get(n))):[],
   frames:renderer?.info.render.frame,
   aspect:camera.aspect,
   position:camera.position.toArray(),
@@ -196,7 +245,7 @@ async function init(){
     height=box.max.y-box.min.y;
     avatarWidth=box.max.x-box.min.x;
     const mid=box.getCenter(new T.Vector3());
-    center.set(mid.x,box.min.y+height*.66,mid.z);
+    center.set(mid.x,box.min.y+height*.75,mid.z);
     setCamera();
 
     bones=R.canonicalBoneNodesFromObject(avatar);
@@ -204,6 +253,7 @@ async function init(){
     handRig=new HandRig(avatar);
     handRig.prepare();
     avatar.traverse(b=>{if(b.isBone)restPose.push([b,b.position.clone(),b.quaternion.clone(),b.scale.clone()])});
+    transition=new PoseTransition(restPose.map(([bone])=>bone));
     rest={
       targetRest:R.canonicalRestMapFromObject(avatar),
       targetWorldRest:R.canonicalWorldRestMapFromObject(avatar),
@@ -223,29 +273,38 @@ async function init(){
     function tick(now){
       requestAnimationFrame(tick);
       if(document.hidden||playback.paused){last=now;return}
-      if(now-last<33)return;
+      if(now-last<1000/60-.5)return;
       const dt=Math.min((now-last)/1000,1);
       last=now;
 
       if(!playing&&!dirty)return;
       dirty=false;
 
+      let finishedId=null;
       if(playing&&action){
-        mixer.update(dt);
+        mixer.update(freshClip?0:dt);
+        freshClip=false;
         const next=marks.findIndex(m=>action.time>=m.start&&action.time<m.end);
         if(next>=0&&next!==index){index=next;updateBadge()}
         if(action.time>=clip.duration-.001){
-          playing=false;
-          $('badge').classList.add('hidden');
-          $('idle-indicator').classList.remove('active');
-          playback.finish(playback.current.id);
+          finishedId=playback.current.id;
         }
       }
 
       if(marks[index]?.kind==="sign")armMotion.apply(action?.time||0);
       applyHandCues(handRig,action?.time||0,cues,poseCache);
+      transition.apply(dt);
       avatar.updateMatrixWorld(true);
       renderer.render(scene,camera);
+      transition.captureRendered();
+      // Render the final outgoing pose before handing off. The next frame starts
+      // from that same displayed pose and blends into the next solved clip.
+      if(finishedId!==null){
+        playing=false;
+        $('badge').classList.add('hidden');
+        $('idle-indicator').classList.remove('active');
+        playback.finish(finishedId);
+      }
     }
     requestAnimationFrame(tick);
   }catch(error){

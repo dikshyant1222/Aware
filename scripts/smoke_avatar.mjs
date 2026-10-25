@@ -34,7 +34,19 @@ const server = createServer(async (req, res) => {
       // Only the served test copy receives a fake Android bridge.
       body = Buffer.from(body.toString().replace('<script>', `<script>
         const report=(...event)=>fetch('/event?data='+encodeURIComponent(JSON.stringify(event)));
-        const started=[],completed=[];
+        const started=[],completed=[],seams=[];
+        let previousFrame=-1,previousId=null,previousJoints=null,finished=false;
+        function watchTransitions(){
+          const d=window.avatarDiagnostics();
+          if(d.frames!==previousFrame){
+            if(previousId&&d.currentId&&previousId!==d.currentId){
+              const angle=(a,b)=>2*Math.acos(Math.min(1,Math.abs(a.reduce((sum,v,i)=>sum+v*b[i],0))));
+              seams.push(Math.max(...previousJoints.map((q,i)=>angle(q,d.renderedJoints[i]))));
+            }
+            previousFrame=d.frames;previousId=d.currentId;previousJoints=d.renderedJoints;
+          }
+          if(!finished)requestAnimationFrame(watchTransitions);
+        }
         window.AwareBridge={
           onAvatarReady(){
             const canvas=document.querySelector('canvas');
@@ -42,6 +54,7 @@ const server = createServer(async (req, res) => {
             if(!canvas.width||!canvas.height||rect.width<=0||rect.height<=0){report('error','Avatar canvas has no visible area');return}
             if(Math.abs(rect.width-innerWidth)>2||Math.abs(rect.height-(visualViewport?.height||innerHeight))>2){report('error','Avatar canvas does not fit its viewport');return}
             report('ready',JSON.stringify({width:rect.width,height:rect.height}));
+            requestAnimationFrame(watchTransitions);
             window.enqueueCaptions([{id:'1',text:'Yes'},{id:'2',text:'No'}]);
             window.enqueueCaptions([{id:'2',text:'No'},{id:'3',text:'Help'}]);
           },
@@ -52,7 +65,8 @@ const server = createServer(async (req, res) => {
               window.enqueueCaptions([{id:'4',text:'Me'},{id:'5',text:'You'}]);
               window.clearSigns();
               setTimeout(()=>{
-                report('done',JSON.stringify({started,completed,active:document.getElementById('idle-indicator').classList.contains('active')}));
+                finished=true;
+                report('done',JSON.stringify({started,completed,seams,active:document.getElementById('idle-indicator').classList.contains('active')}));
               },300);
             }
           },
@@ -90,7 +104,10 @@ try {
   assert.deepEqual(completed.started, ['1', '2', '3', '4']);
   assert.deepEqual(completed.completed, ['1', '2', '3', '4']);
   assert.equal(completed.active, false);
-  console.log('Avatar WebGL runtime passed: model ready, ordered signs, bridge callbacks, duplicate filtering, clear/cancel.');
+  assert.equal(completed.seams.length,1);
+  assert.ok(completed.seams[0]<.08, 'Rendered pose jumped at the word handoff: '+completed.seams[0]);
+  console.log('Avatar WebGL runtime passed: model ready, ordered signs, smooth handoff, bridge callbacks, duplicate filtering, clear/cancel.');
+  console.log('Word-boundary joint change: '+(completed.seams[0]*180/Math.PI).toFixed(3)+' degrees.');
 } finally {
   clearTimeout(timer);
   browser.kill();

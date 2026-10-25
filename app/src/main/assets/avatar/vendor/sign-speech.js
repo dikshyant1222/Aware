@@ -173,7 +173,9 @@ export function compileUtterance(text, opts = {}) {
 	let planned = 0;
 	let truncated = false;
 	for (let i = 0; i < words.length; i++) {
-		const position = { first: i === 0, last: false };
+		// Aware live playback blends adjacent chunks itself, keeping the hands
+		// in signing space instead of lowering and lifting them for every word.
+		const position = { first: opts.continuous !== true && i === 0, last: false };
 		const built = build(words[i], position);
 		const gap = chosen.length ? WORD_GAP_SECONDS : 0;
 		// Reserve room for the closing settle so the cap still holds once the last
@@ -189,7 +191,7 @@ export function compileUtterance(text, opts = {}) {
 	// Whichever word ended up last (the real last, or the one truncation stopped
 	// at) is the one that lowers the hands.
 	const closing = chosen[chosen.length - 1];
-	closing.position = { ...closing.position, last: true };
+	closing.position = { ...closing.position, last: opts.continuous !== true };
 	Object.assign(closing, build(closing.word, closing.position));
 
 	const merged = new Map();
