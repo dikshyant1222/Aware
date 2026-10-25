@@ -62,6 +62,15 @@ class SharedAudioTranscriber internal constructor(
                 override fun onEndOfSpeech() = Unit
                 override fun onEvent(eventType: Int, params: Bundle?) = Unit
                 override fun onPartialResults(partialResults: Bundle?) = publish(partialResults, false, token)
+                override fun onSegmentResults(segmentResults: Bundle) {
+                    if (!active || token != generation) return
+                    publish(segmentResults, true, token)
+                    errors = 0
+                    this@SharedAudioTranscriber.onError(null)
+                }
+                override fun onEndOfSegmentedSession() {
+                    if (active && token == generation) scheduleRestart(250)
+                }
                 override fun onResults(results: Bundle?) {
                     if (!active || token != generation) return
                     publish(results, true, token)
@@ -77,13 +86,15 @@ class SharedAudioTranscriber internal constructor(
                 }
             })
             val intent = recognitionIntent(locale)
-            if (pcm != null) {
-                check(Build.VERSION.SDK_INT >= 33)
+            if (pcm != null && Build.VERSION.SDK_INT >= 33) {
                 val descriptors = ParcelFileDescriptor.createPipe()
                 pipe = descriptors
                 val fd = descriptors[1].fileDescriptor
                 Os.fcntlInt(fd, OsConstants.F_SETFL, Os.fcntlInt(fd, OsConstants.F_GETFL, 0) or OsConstants.O_NONBLOCK)
                 intent.putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, descriptors[0])
+                // An injected stream stays open continuously. Ask for finalized
+                // segments instead of waiting for EOF before onResults fires.
+                intent.putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
                 intent.putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_CHANNEL_COUNT, 1)
                 intent.putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
                 intent.putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_SAMPLING_RATE, 16_000)

@@ -86,7 +86,7 @@ fun HomeScreen(
             .safeDrawingPadding()
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
-        contentPadding = PaddingValues(bottom = 96.dp),
+        contentPadding = PaddingValues(bottom = 104.dp),
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {

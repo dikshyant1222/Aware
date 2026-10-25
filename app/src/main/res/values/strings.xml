@@ -146,4 +146,10 @@
     <string name="llm_import_failed">Could not import model</string>
     <string name="llm_remove_failed">Could not remove model</string>
     <string name="llm_help">Download a Gemma 3 1B int4 .task model (litert-community on Hugging Face), then import it here or adb push it to /data/local/tmp/llm/model.task.</string>
+    <string name="asl_interpreter">ASL Interpreter</string>
+    <string name="avatar_loading">Loading signing avatar…</string>
+    <string name="avatar_failed">Avatar unavailable. Live captions still work.</string>
+    <string name="avatar_retry">Retry avatar</string>
+    <string name="avatar_signing">Signing this caption</string>
+    <string name="avatar_experimental">Experimental English signs + fingerspelling. Final captions are signed in order.</string>
 </resources>

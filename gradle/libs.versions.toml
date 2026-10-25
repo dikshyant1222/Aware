@@ -11,9 +11,11 @@ mediapipe-audio = "0.10.26.1"
 mediapipe-genai = "0.10.27"
 mlkit-translate = "17.0.3"
 junit = "4.13.2"
+webkit = "1.13.0"
 
 [libraries]
 junit = { module = "junit:junit", version.ref = "junit" }
+androidx-webkit = { module = "androidx.webkit:webkit", version.ref = "webkit" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }
