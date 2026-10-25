@@ -1,0 +1,9 @@
+# Tool caches
+Microsoft/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / assistant folders
+.claude/
