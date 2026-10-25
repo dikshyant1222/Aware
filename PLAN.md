@@ -82,7 +82,7 @@ Privacy: multipart audio stays in memory with disk spooling disabled, limited to
 
 **Job B — frontend (`frontend/`)**: Expo app per PRD §1, §5–8, §10–11, §13–16, built against the contract above. `AwareContext` owns listening loop (record 2 s → upload → next), confirmation/cooldown logic, alert queue with critical priority, persistence of settings, events, and the custom fingerprint on the phone. `notify.ts` creates channels and posts notifications only when app is backgrounded; foreground uses `Vibration` (no double vibration). Lint + `tsc --noEmit` clean. Pure logic (confirmation, cooldown, priority) in `src/utils/` with Jest tests.
 
-**Phase 3 — Claude (orchestrator)**: integrate, run backend tests, run frontend typecheck/lint/tests, contract check between `src/api.ts` and server, review, fix gaps, README at root.
+**Phase 3 — Integration**: integrate, run backend tests, run frontend typecheck/lint/tests, contract check between `src/api.ts` and server, review, fix gaps, README at root.
 
 ## Definition of done
 - `pytest backend/tests` green; `npx tsc --noEmit` + `npx expo lint` green; frontend Jest green.
