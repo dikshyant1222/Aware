@@ -165,12 +165,13 @@ quality still need verification on the target phone. No model is bundled.
 
 ## Verification status
 
-Verified on October 25, 2026: debug APK builds, all 67 JVM unit tests pass, and
-Android lint passes with warnings. Twelve JavaScript tests cover caption queueing,
-deduplication, cancellation, pause/resume, clip compilation, and pose continuity:
+Verified on October 27, 2026: debug APK builds, all 91 JVM unit tests pass, and
+Android lint passes with warnings. Eighteen JavaScript tests cover caption queueing,
+deduplication, cancellation, pause/resume, clip compilation, pose continuity, and
+the authored signing vocabulary:
 
 ```powershell
-node --experimental-default-type=module --test scripts/test_avatar_sync.mjs scripts/test_avatar_transitions.mjs
+node --test scripts/test_avatar_sync.mjs scripts/test_avatar_transitions.mjs scripts/test_avatar_vocabulary.mjs
 ```
 
 `node scripts/smoke_avatar.mjs` also passes against the bundled avatar in headless

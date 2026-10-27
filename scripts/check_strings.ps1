@@ -1,9 +1,13 @@
 # Checks Android string references and escaping without the Android SDK.
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
-$stringsPath = Join-Path $project 'app/src/main/res/values/strings.xml'
-[xml]$xml = Get-Content -LiteralPath $stringsPath -Raw -Encoding UTF8
-$strings = @($xml.resources.string)
+$valuesPath = Join-Path $project 'app/src/main/res/values'
+$strings = @(Get-ChildItem -LiteralPath $valuesPath -Filter '*.xml' -File | ForEach-Object {
+    [xml]$xml = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
+    if ($null -ne $xml.resources.string) {
+        @($xml.resources.string)
+    }
+})
 $names = @($strings | ForEach-Object { $_.GetAttribute('name') })
 $duplicates = @($names | Group-Object | Where-Object Count -gt 1)
 if ($duplicates) { throw "Duplicate strings: $($duplicates.Name -join ', ')" }
@@ -22,6 +26,6 @@ $unescaped = @($strings | Where-Object {
     [regex]::IsMatch($_.InnerText, "(?<!\\)(?:\\\\)*'")
 } | ForEach-Object { $_.GetAttribute('name') })
 if ($unescaped) { throw "Unescaped apostrophes: $($unescaped -join ', ')" }
-Write-Output "PASS: strings.xml parses as XML ($($names.Count) strings)."
+Write-Output "PASS: values XML files parse as XML ($($names.Count) strings)."
 Write-Output "PASS: all $($references.Count) referenced R.string names exist."
 Write-Output 'PASS: all apostrophes are escaped.'
