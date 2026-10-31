@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>ASL Avatar</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100vw;height:100vh;min-height:100vh;overflow:hidden;background:#f3f8f2}
+#avatar3d{position:fixed;inset:0;width:100vw;height:100vh}
+#avatar3d canvas{display:block;width:100%;height:100%}
+#badge{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  background:rgba(218,255,98,.15);border:1px solid rgba(218,255,98,.35);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border-radius:24px;padding:6px 18px;
+  font:600 15px/1.3 'Inter','Segoe UI',system-ui,sans-serif;
+  color:#DAFF62;text-align:center;white-space:nowrap;
+  pointer-events:none;z-index:10;
+  transition:opacity .3s}
+#badge.hidden{opacity:0}
+#loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  color:#888;font:500 16px/1.4 system-ui,sans-serif;text-align:center}
+#idle-indicator{position:absolute;top:16px;right:16px;width:10px;height:10px;
+  border-radius:50%;background:#555;transition:background .3s}
+#idle-indicator.active{background:#DAFF62}
+/* The native screen owns loading/retry; this panel only shows the signer. */
+#badge,#idle-indicator,#loading{display:none}
+</style>
+</head>
+<body>
+<div id="avatar3d"></div>
+<div id="badge" class="hidden"></div>
+<div id="loading">Loading signing avatar…</div>
+<div id="idle-indicator"></div>
+
+<script>
+// Report module/import failures as well as model-loading failures to Android.
+function reportAvatarError(error){
+  console.error('Avatar:',error);
+  document.getElementById('loading').hidden=false;
+  document.getElementById('loading').textContent='Could not load signing avatar.';
+  try{AwareBridge.onAvatarError(String(error))}catch(e){}
+}
+window.addEventListener('error',e=>reportAvatarError(e.message||'Asset loading failed'));
+window.addEventListener('unhandledrejection',e=>reportAvatarError(e.reason));
+</script>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
+<script type="module">
+import {ArmMotion} from './arm-motion.js';
+import {VOCABULARY,compileMessage,applyHandCues} from './common-signs.js';
+import {loadRealisticAvatar} from './realistic-avatar.js';
+import {HandRig} from './hand-rig.js';
+import * as T from 'three';
+import * as R from './vendor/animation-retarget.js';
+import {CaptionPlayback} from './caption-playback.js';
+import {PoseTransition} from './pose-transition.js';
+
+const $=id=>document.getElementById(id);
+let avatar,mixer,action,clip,marks=[],index=0,playing=false,ready=false;
+let rest,bones,armMotion,handRig,renderer,height=1.8,avatarWidth=1.2,dirty=true;
+let cues=[],poseCache=new Map(),stopAt=null;
+let restPose=[],transition,freshClip=false,preparationJob=null;
+const clipCache=new Map();
+const transitionMetrics={prepared:0,cacheHits:0,seamCacheHits:0,starts:0,maxPrepareMs:0};
+const notify=(method,...args)=>{try{window.AwareBridge?.[method](...args)}catch(e){}};
+const playback=new CaptionPlayback({
+  play:entry=>doAnimate(entry),
+  stop:resetPose,
+  onStart:entry=>notify('onSigningStarted',entry.id,String(entry.lineId||entry.id),entry.start||0,entry.end??entry.text.length),
+  onComplete:entry=>notify('onSigningComplete',entry.id),
+  onError:error=>reportAvatarError(error),
+});
+
+const scene=new T.Scene();
+scene.add(new T.HemisphereLight(0xfaf7ee,0x64765c,2.5));
+for(const [color,power,pos] of [[0xfff2df,3,[2,3,4]],[0xe4f0ff,1.8,[-3,1,3]],[0xffffff,2,[0,3,-2]]]){
+  const l=new T.DirectionalLight(color,power);l.position.set(...pos);scene.add(l);
+}
+
+const camera=new T.PerspectiveCamera(31,1,.01,100);
+const center=new T.Vector3();
+
+function makeRenderer(host){
+  let r;
+  try{r=new T.WebGLRenderer({antialias:true,alpha:true})}
+  catch{r=new T.WebGLRenderer({alpha:true})}
+  r.setPixelRatio(Math.min(devicePixelRatio,2));
+  r.setClearColor(0,0);
+  r.outputColorSpace=T.SRGBColorSpace;
+  r.toneMapping=T.ACESFilmicToneMapping;
+  r.toneMappingExposure=1.1;
+  host.append(r.domElement);
+  return r;
+}
+
+function resize(){
+  dirty=true;
+  if(!renderer)return;
+  // Android WebView can resolve %/vh heights to zero when the page is loaded
+  // before Compose measures it. Its visual viewport still has the correct size.
+  const w=window.innerWidth,h=Math.round(window.visualViewport?.height||window.innerHeight);
+  if(!w||!h)return;
+  document.documentElement.style.height=h+'px';
+  document.body.style.height=h+'px';
+  $('avatar3d').style.width=w+'px';
+  $('avatar3d').style.height=h+'px';
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h;
+  camera.updateProjectionMatrix();
+  if(avatar)setCamera();
+  if(ready)renderer.render(scene,camera);
+}
+
+function setCamera(){
+  dirty=true;
+  // Frame the signer from head to hips, allowing room for the signing space.
+  const visibleHeight=Math.max(height*.58,avatarWidth*.80/camera.aspect);
+  const d=visibleHeight/(2*Math.tan(camera.fov*Math.PI/360));
+  camera.position.set(center.x,center.y+.015,center.z+d);
+  camera.lookAt(center);
+}
+
+function prepareClip(text){
+  const key=text.trim().toUpperCase();
+  if(clipCache.has(key)){
+    const plan=clipCache.get(key);clipCache.delete(key);clipCache.set(key,plan);
+    transitionMetrics.cacheHits++;
+    return plan;
+  }
+  const started=performance.now();
+  const compiled=compileMessage(text,false,{live:true,continuous:true});
+  if(!compiled.marks.length)throw new Error('No supported English letters or signs in caption');
+  const source=T.AnimationClip.parse(compiled.clip);
+  const result=R.retargetClipToObject(source,avatar,rest);
+  if(!result.clip)throw new Error('Could not retarget signing clip');
+  const cache=new Map();
+  for(const cue of compiled.cues)for(const side of ['Right','Left']){
+    const key=side==='Right'?'right':'left',previous=side==='Right'?'previousRight':'previousLeft';
+    for(const shape of [cue[key],cue[previous]]){
+      const id=side+shape;if(!cache.has(id))cache.set(id,handRig.pose(shape,side));
+    }
+  }
+  const plan={source,clip:result.clip,marks:compiled.marks,cues:compiled.cues,cache};
+  clipCache.set(key,plan);
+  if(clipCache.size>24)clipCache.delete(clipCache.keys().next().value);
+  transitionMetrics.prepared++;
+  transitionMetrics.maxPrepareMs=Math.max(transitionMetrics.maxPrepareMs,performance.now()-started);
+  return plan;
+}
+
+function prepareNext(){
+  if(preparationJob!==null||!playback.pending.length)return;
+  const job=()=>{
+    preparationJob=null;
+    const next=playback.pending[0];
+    if(next&&ready){try{prepareClip(next.text)}catch(error){console.error('Prepare sign:',error)}}
+  };
+  preparationJob=window.requestIdleCallback?requestIdleCallback(job,{timeout:100}):setTimeout(job,0);
+}
+
+function doAnimate(entry){
+  if(!ready)throw new Error('Avatar is not ready');
+  if(transitionMetrics.starts&&clipCache.has(entry.text.trim().toUpperCase()))transitionMetrics.seamCacheHits++;
+  const plan=prepareClip(entry.text);
+  // Capture the last displayed solution before stop() restores mixer bindings.
+  transition.begin();
+  if(action){action.stop();mixer.uncacheClip(clip)}
+  marks=plan.marks;cues=plan.cues;poseCache=plan.cache;
+  armMotion.setClip(plan.source);
+  clip=plan.clip;
+  action=mixer.clipAction(clip);
+  action.setLoop(T.LoopOnce);
+  action.clampWhenFinished=true;
+  action.reset().play();
+  index=0;playing=true;freshClip=true;
+  transitionMetrics.starts++;
+  updateBadge();
+  $('idle-indicator').classList.add('active');
+  prepareNext();
+}
+
+function resetPose(){
+  playing=false;
+  if(action){action.stop();mixer.uncacheClip(clip)}
+  action=null;clip=null;marks=[];cues=[];poseCache=new Map();
+  for(const [bone,position,quaternion,scale] of restPose){
+    bone.position.copy(position);bone.quaternion.copy(quaternion);bone.scale.copy(scale);
+  }
+  transition?.reset();
+  $('badge').classList.add('hidden');
+  $('idle-indicator').classList.remove('active');
+  dirty=true;
+}
+
+function updateBadge(){
+  const m=marks[index];
+  if(!m){$('badge').classList.add('hidden');return}
+  $('badge').textContent=m.label;
+  $('badge').classList.remove('hidden');
+}
+
+// ---- Public API for Android WebView bridge ----
+window.enqueueCaptions=entries=>{playback.enqueue(entries);prepareNext()};
+window.clearSigns=()=>{
+  if(preparationJob!==null){
+    if(window.cancelIdleCallback)cancelIdleCallback(preparationJob);else clearTimeout(preparationJob);
+    preparationJob=null;
+  }
+  playback.reset();
+};
+window.setPlaybackPaused=paused=>playback.setPaused(paused);
+window.isReady=function(){return ready};
+window.resizeAvatar=resize;
+window.avatarDiagnostics=()=>({
+  ready,paused:playback.paused,playing,
+  stats:playback.stats,
+  transition:{...transitionMetrics,active:transition?.active||false,elapsed:transition?.elapsed||0},
+  currentId:playback.current?.id||null,
+  lineId:playback.current?.lineId||null,
+  range:playback.current?[playback.current.start,playback.current.end]:null,
+  queued:playback.pending.length,
+  time:action?.time||0,
+  duration:clip?.duration||0,
+  joints:bones?['RightArm','RightForeArm','RightHand','RightHandIndex1'].map(n=>bones.get(n)?.quaternion.toArray()):[],
+  renderedJoints:bones?['RightArm','RightForeArm','RightHand','RightHandIndex1','RightHandThumb1','LeftArm','LeftForeArm','LeftHand','LeftHandIndex1','LeftHandThumb1'].map(n=>transition.renderedRotation(bones.get(n))):[],
+  frames:renderer?.info.render.frame,
+  aspect:camera.aspect,
+  position:camera.position.toArray(),
+  bounds:avatar?new T.Box3().setFromObject(avatar).getSize(new T.Vector3()).toArray():null,
+});
+
+async function init(){
+  try{
+    renderer=makeRenderer($('avatar3d'));
+    resize();
+    new ResizeObserver(resize).observe($('avatar3d'));
+    window.addEventListener('resize',resize);
+    window.visualViewport?.addEventListener('resize',resize);
+
+    avatar=await loadRealisticAvatar();
+    scene.add(avatar);
+    avatar.updateMatrixWorld(true);
+
+    const box=new T.Box3().setFromObject(avatar);
+    height=box.max.y-box.min.y;
+    avatarWidth=box.max.x-box.min.x;
+    const mid=box.getCenter(new T.Vector3());
+    center.set(mid.x,box.min.y+height*.75,mid.z);
+    setCamera();
+
+    bones=R.canonicalBoneNodesFromObject(avatar);
+    armMotion=new ArmMotion(avatar,bones);
+    handRig=new HandRig(avatar);
+    handRig.prepare();
+    avatar.traverse(b=>{if(b.isBone)restPose.push([b,b.position.clone(),b.quaternion.clone(),b.scale.clone()])});
+    transition=new PoseTransition(restPose.map(([bone])=>bone));
+    rest={
+      targetRest:R.canonicalRestMapFromObject(avatar),
+      targetWorldRest:R.canonicalWorldRestMapFromObject(avatar),
+      targetRestDirections:R.canonicalRestDirectionMapFromObject(avatar),
+      hipsParentWorldQuat:R.hipsParentWorldQuat(avatar),
+    };
+    mixer=new T.AnimationMixer(avatar);
+    resize();
+    renderer.render(scene,camera);
+    ready=true;
+    $('loading').hidden=true;
+
+    // Notify Android that WebView is ready
+    notify('onAvatarReady');
+
+    let last=performance.now();
+    function tick(now){
+      requestAnimationFrame(tick);
+      if(document.hidden||playback.paused){last=now;return}
+      if(now-last<1000/60-.5)return;
+      const dt=Math.min((now-last)/1000,1);
+      last=now;
+
+      if(!playing&&!dirty)return;
+      dirty=false;
+
+      let finishedId=null;
+      if(playing&&action){
+        mixer.update(freshClip?0:dt);
+        freshClip=false;
+        const next=marks.findIndex(m=>action.time>=m.start&&action.time<m.end);
+        if(next>=0&&next!==index){index=next;updateBadge()}
+        if(action.time>=clip.duration-.001){
+          finishedId=playback.current.id;
+        }
+      }
+
+      if(marks[index]?.kind==="sign")armMotion.apply(action?.time||0);
+      applyHandCues(handRig,action?.time||0,cues,poseCache);
+      transition.apply(dt);
+      avatar.updateMatrixWorld(true);
+      renderer.render(scene,camera);
+      transition.captureRendered();
+      // Render the final outgoing pose before handing off. The next frame starts
+      // from that same displayed pose and blends into the next solved clip.
+      if(finishedId!==null){
+        playing=false;
+        $('badge').classList.add('hidden');
+        $('idle-indicator').classList.remove('active');
+        playback.finish(finishedId);
+      }
+    }
+    requestAnimationFrame(tick);
+  }catch(error){
+    reportAvatarError(error);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+Signa includes adapted signing-engine modules from three.ws by nirholas and
+contributors, Apache License 2.0 (see LICENSE).
+https://github.com/nirholas/three.ws
+Modifications: G/H wrist orientations in fingerspelling.js; model-specific
+finger calibration, cached pose interpolation and thumb contact solving in
+custom Signa modules.
+
+The avatar is adapted from Microsoft Rocketbox Female_Adult_01.
+https://github.com/microsoft/Microsoft-Rocketbox
+Copyright (c) 2020 Microsoft. MIT License: rocket/LICENSE.md.
+Adaptations: canonical bone names, fingertip markers, indexed and grouped
+geometry, selective skin-aware hand refinement, WebP textures, GLB conversion.
+No motion-capture or linguistic-validation claim is made.
+
+Three.js 0.170.0, GLTFLoader and BufferGeometryUtils are bundled locally.
+See three/LICENSE and source headers for license notices.

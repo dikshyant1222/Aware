@@ -1,0 +1,36 @@
+<resources>
+    <string name="setup_welcome">Welcome to Aware</string>
+    <string name="setup_profile_title">Let’s get to know you</string>
+    <string name="setup_profile_body">Your name helps Aware recognize when someone calls you.</string>
+    <string name="setup_name">Your name</string>
+    <string name="setup_dob">Date of birth</string>
+    <string name="setup_local">Saved on this device. Your name will stay fixed after setup, until app data is cleared.</string>
+    <string name="setup_continue">Continue</string>
+    <string name="setup_choose_date">Choose date</string>
+    <string name="setup_cancel">Cancel</string>
+    <string name="setup_sound_title">A quick sound check</string>
+    <string name="setup_sound_body">Try three short sample sounds at a comfortable device volume. This is a demo, not a hearing assessment. Your answers won’t change how Aware detects sounds.</string>
+    <string name="setup_sound_number">Sound %1$d of 3</string>
+    <string name="setup_play">Play sample</string>
+    <string name="setup_playing">Playing…</string>
+    <string name="setup_heard">I heard it</string>
+    <string name="setup_not_heard">I didn’t hear it</string>
+    <string name="setup_sound_unavailable">The sample couldn’t play. You can still continue with your response.</string>
+    <string name="setup_done_title">You’re ready</string>
+    <string name="setup_done_body">Three sample sounds completed. Aware works the same for everyone for now. Name detection will always use the name you entered.</string>
+    <string name="setup_finish">Start using Aware</string>
+    <string name="setup_saving">Saving…</string>
+    <string name="setup_save_failed">Couldn’t save setup. Please try again.</string>
+    <string name="setup_step">Step %1$d of 3</string>
+    <string name="profile_title">Your profile</string>
+    <string name="profile_name_detection">Name detection is always on</string>
+    <string name="profile_fixed">Profile saved during setup</string>
+    <string name="summary_history_title">Recent summaries</string>
+    <string name="summary_history_range">Last 10 minutes</string>
+    <string name="summary_history_empty">No recent summaries yet</string>
+    <string name="summary_history_hint">While listening, Aware saves a summary every 40 seconds. They’ll appear here with their times.</string>
+    <string name="summary_auto_waiting">Listening to your surroundings. Your first summary will appear within 40 seconds.</string>
+    <string name="summary_history_action">Summary history</string>
+    <string name="summary_history_pill">History</string>
+    <string name="speech_status_title">Speech availability</string>
+</resources>
